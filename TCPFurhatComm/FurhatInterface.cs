@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -14,6 +15,8 @@ namespace TCPFurhatComm
     {
 
         #region Class Variables
+
+        public static CultureInfo culture;
 
         /// <summary>
         /// TCP client to communicate with the furhat robot or dev-server
@@ -31,6 +34,17 @@ namespace TCPFurhatComm
         /// Create this actions by using SubscribeToEvent method and adding a if statement in the ProcessEvents method
         /// </summary>
         private Dictionary<string, Action<string>> SubscribedEvents;
+
+        internal void EnableMicroexpressions(bool enable)
+        {
+            string hardcodedToDisable = "{\"event_id\":\"0ba36e04-912e-48c5-910e-6658933dfe33\",\"event_name\":\"furhatos.event.actions.ActionMicroexpression\",\"microexpression\":{\"repeats\":[],\"fluctuations\":[],\"name\":\"setDefaultMicroexpression\"},\"event_time\":\"2019-03-03 17:49:44.004\"}";
+            //string hardcodedToDisable = "{\"event_name\":\"furhatos.event.actions.ActionMicroexpression\",\"microexpression\":{\"repeats\":[],\"fluctuations\":[],\"name\":\"setDefaultMicroexpression\"}}";
+            string hardcodedToEnable = "{\"event_name\":\"furhatos.event.actions.ActionMicroexpression\",\"microexpression\":{\"repeats\":[{\"freqFrom\":200,\"adjustments\":[{\"freqFrom\":-3,\"freqTo\":3,\"paramName\":\"GAZE_PAN\"},{\"freqFrom\":-3,\"freqTo\":3,\"paramName\":\"GAZE_TILT\"}],\"freqTo\":400},{\"freqFrom\":2000,\"adjustments\":[],\"freqTo\":8000,\"gesture\":{\"frames\":[{\"time\":[0.2],\"persist\":false,\"params\":{\"BLINK_RIGHT\":1,\"BLINK_LEFT\":1}},{\"time\":[0.4],\"persist\":false,\"params\":{\"reset\":true}}],\"name\":\"Blink\"}}],\"fluctuations\":[{\"adjust\":0.12,\"freq\":0.025,\"range\":0.06,\"list\":[\"BROW_UP_LEFT\",\"BROW_UP_RIGHT\"]},{\"adjust\":0.5,\"freq\":0.025,\"range\":0.2,\"list\":[\"SMILE_CLOSED\"]},{\"adjust\":0.5,\"freq\":0.025,\"range\":0.2,\"list\":[\"EXPR_SAD\"]}],\"name\":\"setDefaultMicroexpression\"}}";
+            if (enable)
+                SendHardcodedEvent("furhatos.event.actions.ActionMicroexpression", hardcodedToEnable);
+            else
+                SendHardcodedEvent("furhatos.event.actions.ActionMicroexpression", hardcodedToDisable);
+        }
 
         ///// <summary>
         ///// This bool is used at the end of speech event to go back to a neutral pose if the say(text,gesture) function was called
@@ -60,19 +74,40 @@ namespace TCPFurhatComm
         /// </summary>
         private int currentWord;
 
-        /// <summary>
-        /// Variable is filled when a string is recognized
-        /// </summary>
-        public string RecognizedString = null;
+        private int gazeMode = 2;
 
-        public Action EndSpeechAction;
+        private int gazeSpeed = 2;
+
+        private float gazeRoll = 0;
+
+        private bool rollEnabled = false;
+
+        #endregion
+
+        #region Actions
+        /// <summary>
+        /// Action called whenever a speech synthesis event is finished
+        /// </summary>
+        public Action EndSpeechActionAction;
+
+        /// <summary>
+        /// Action called whenever furhat system senses users
+        /// </summary>
+        public Action<List<User>> SensedUsersAction;
+
+
+        /// <summary>
+        /// Action called whenever the Speech Recognizer returns an event
+        /// </summary>
+        public Action<string> RecognizedSpeechAction;
+
 
         ///// <summary>
         ///// Start with a null value and can be filled by using the LoadCategoryFileMethod
         ///// </summary>
         //private Dictionary<string, List<Behavior>> utteranceList;
 
-        #endregion
+        #endregion Actions
 
         #region Constructors and Initialization
 
@@ -83,8 +118,10 @@ namespace TCPFurhatComm
         /// <param name="port"> The port to the tcp socket in IrisTK (default one is "1932") </param>
         public FurhatInterface(string ipAddress = "localhost", int port = 1932)
         {
+            culture = new CultureInfo("en-US", false);
+
             currentWord = -1;
-            RecognizedString = null;
+
             inMiddleOfSpeaking = false;
             SayQueue = new Queue<Tuple<string, string>>();
 
@@ -96,8 +133,13 @@ namespace TCPFurhatComm
 
             SubscribeToEvent(EVENTNAME.MONITOR.SPEECH.WORD, new Action<string>(SpeechWordEvent));
             SubscribeToEvent(EVENTNAME.MONITOR.SPEECH.END, new Action<string>(SpeechEndEvent));
-            SubscribeToEvent(EVENTNAME.SENSE.SPEECH.REC, new Action<string>(SpeechRecEvent));
+            SubscribeToEvent(EVENTNAME.SENSE.SPEECH, new Action<string>(SpeechSensedEvent));
+            SubscribeToEvent(EVENTNAME.SENSE.USERS, new Action<string>(UsersSensedEvent));
+
+
         }
+
+
 
         /// <summary>
         /// Establish a TCP connection with the IrisTK Broker
@@ -167,18 +209,51 @@ namespace TCPFurhatComm
             //Console.WriteLine(json);
         }
 
+        /// <summary>
+        /// Internal function that actually sends the event to IrisTK via the tcp/ip client
+        /// </summary>
+        /// <param name="eventToSend"> Event to be sent to IrisTK. JSON.NET and the ActionEvents class helps with this task. </param>
+        internal void SendHardcodedEvent(string eventName, string json)
+        {
+            Thread.Sleep(10);
+            client.Send("EVENT " + eventName + " -1 " + System.Text.ASCIIEncoding.ASCII.GetByteCount(json) + "\n");
+            client.Send(json);
+            //Console.WriteLine("EVENT " + eventToSend.event_name + " -1 " + System.Text.ASCIIEncoding.ASCII.GetByteCount(json) + "\n");
+            //Console.WriteLine(json);
+        }
+
         #endregion
 
         #region Actions Triggered from Events
+
+        private void UsersSensedEvent(string obj)
+        {
+            List<User> users = new List<User>();
+            JObject o = JObject.Parse(obj);
+            var usersJson = o.GetValue("users").Children();
+            foreach (var user in usersJson)
+            {
+                User u = new User();
+                var currentUser = user.First;
+                JObject head = currentUser.Value<JObject>("head");
+                JToken rot = head.GetValue("rotation");
+                JToken loc = head.GetValue("location");
+                u.id = currentUser.Value<string>("id");
+                u.location = new Vector3Simple(loc.Value<float>("x"), loc.Value<float>("y"), loc.Value<float>("z"));
+                u.rotation = new Vector3Simple(rot.Value<float>("x"), rot.Value<float>("y"), rot.Value<float>("z"));
+                users.Add(u);
+            }
+            SensedUsersAction?.Invoke(users);
+        }
 
         /// <summary>
         /// Triggered when there is a monitor.speech.rec event
         /// </summary>
         /// <param name="str"> Json string from monitor.speech.rec </param>
-        private void SpeechRecEvent(string str)
+        private void SpeechSensedEvent(string str)
         {
             JObject o = JObject.Parse(str);
-            RecognizedString = o.GetValue("text").ToString();
+            RecognizedSpeechAction?.Invoke(o.GetValue("text").ToString());
         }
 
         /// <summary>
@@ -222,7 +297,7 @@ namespace TCPFurhatComm
 
             inMiddleOfSpeaking = false;
 
-            EndSpeechAction?.Invoke();
+            EndSpeechActionAction?.Invoke();
 
             currentWord = -1;
 
@@ -247,6 +322,10 @@ namespace TCPFurhatComm
         {
             switch (item.Item2)
             {
+                case LED.Identifier:
+                    var ledValues = item.Item3.Split(',');
+                    ChangeLed(int.Parse(ledValues[0]), int.Parse(ledValues[1]), int.Parse(ledValues[2]));
+                    break;
                 case GESTURES.Identifier:
                     Gesture(item.Item3);
                     break;
@@ -258,7 +337,7 @@ namespace TCPFurhatComm
                     break;
                 case "gaze":
                     var gazeValues = item.Item3.Split(',');
-                    Gaze(double.Parse(gazeValues[0]), double.Parse(gazeValues[1]), double.Parse(gazeValues[2]));
+                    Gaze(float.Parse(gazeValues[0], culture), float.Parse(gazeValues[1], culture), float.Parse(gazeValues[2], culture));
                     break;
             }
         }
@@ -389,10 +468,11 @@ namespace TCPFurhatComm
             }
         }
 
+
         /// <summary>
         /// An action that is sent to the synthesizer to stop speaking (and clears the speech queue)
         /// </summary>
-        public void StopSpeech()
+        public void StopSpeaking()
         {
             SendEvent(new ActionEvents.StopSpeech());
         }
@@ -409,16 +489,16 @@ namespace TCPFurhatComm
         {
             SendEvent(new ActionEvents.ChangeVoiceByName(name));
         }
+        #endregion
 
         #region Speech Recognition
 
         /// <summary>
         /// An action that is sent to the IRISTK recognizer to make it start listening.
         /// </summary>
-        public void StartListening()
+        public void StartListening(int endSilTimeout = 700, int noSpeechTimeout = 8000, int nbest = 1, int maxSpeechTimeout = 15000/*, bool withIntermediateResults = false*/)
         {
-            RecognizedString = null;
-            SendEvent(new ActionEvents.StartListening(700, 8000, 1, 15000));
+            SendEvent(new ActionEvents.StartListening(endSilTimeout, noSpeechTimeout, nbest, maxSpeechTimeout/*, withIntermediateResults*/));
         }
 
         /// <summary>
@@ -434,13 +514,40 @@ namespace TCPFurhatComm
         #region Gaze
 
         /// <summary>
-        /// Makes the agent shift gaze to a certain location in 3D space
+        /// Sets the global gaze roll of the robot and automatically enables roll on gaze commands. You can disable it again using the EnableRoll function.
         /// </summary>
-        /// <param name="location"> The 3D location where the agent should gaze </param>
-        /// <param name="mode"> Can be "default", "eyes" or "headpose" </param>
-        public void Gaze(Location location, string mode)
+        /// <param name="gazeRoll"> the roll value in degrees</param>
+        public void SetGazeRoll(float gazeRoll)
         {
-            SendEvent(new ActionEvents.PerformGaze(location, mode));
+            rollEnabled = true;
+            this.gazeRoll = gazeRoll;
+        }
+
+        /// <summary>
+        /// Makes the system use the roll in gazeRoll by force
+        /// </summary>
+        /// <param name="enable"> set it to true or false </param>
+        public void EnableRoll(bool enable)
+        {
+            this.rollEnabled = enable;
+        }
+
+        /// <summary>
+        /// Sets the global gaze mode of the robot
+        /// </summary>
+        /// <param name="gazeMode"> 1 - eyes only; 2 - default behavior with eyes first and neck afterwards </param>
+        public void SetGazeMode(int gazeMode)
+        {
+            this.gazeMode = gazeMode;
+        }
+
+        /// <summary>
+        /// Sets the global gaze speed of the robot to the given value
+        /// </summary>
+        /// <param name="gazeSpeed"> 2 is default </param>
+        public void SetGazeSpeed(int gazeSpeed)
+        {
+            this.gazeSpeed = gazeSpeed;
         }
 
         /// <summary>
@@ -449,20 +556,13 @@ namespace TCPFurhatComm
         /// <param name="location"> The 3D location where the agent should gaze </param>
         public void Gaze(Location location)
         {
-            Gaze(location, "default");
+            if (rollEnabled)
+                SendEvent(new ActionEvents.PerformGazeWithRoll(location, gazeMode, gazeSpeed, gazeRoll));
+            else
+                SendEvent(new ActionEvents.PerformGaze(location, gazeMode, gazeSpeed));
+
         }
 
-        /// <summary>
-        /// Makes the agent shift gaze to a certain location in 3D space
-        /// </summary>
-        /// <param name="x"> x position </param>
-        /// <param name="y"> y position </param>
-        /// <param name="z"> z position </param>
-        /// <param name="mode"> Can be "default", "eyes" or "headpose" </param>
-        public void Gaze(double x, double y, double z, string mode)
-        {
-            Gaze(new Location(x, y, z), mode);
-        }
 
         /// <summary>
         /// Makes the agent shift gaze to a certain location in 3D space
@@ -472,7 +572,20 @@ namespace TCPFurhatComm
         /// <param name="z"> z position </param>
         public void Gaze(double x, double y, double z)
         {
-            Gaze(new Location(x, y, z), "default");
+            Gaze(new Location(x, y, z));
+        }
+
+        public void Attend(string name, int mode = 0, int speed = 2, double roll = 0)
+        {
+            if(rollEnabled)
+                SendEvent(new ActionEvents.AttendWithRoll(name, mode, speed, roll));
+            else
+                SendEvent(new ActionEvents.Attend(name, mode, speed));
+        }
+
+        public void ConnectSkill(string name)
+        {
+            SendEvent(new ActionEvents.SkillConnect(name));
         }
 
         #endregion
@@ -503,9 +616,19 @@ namespace TCPFurhatComm
 
         #endregion
 
-        #endregion
+        /// <summary>
+        /// Changes the led color of the robot.
+        /// </summary>
+        /// <param name="name"> The name of the texture </param>
+        public void ChangeLed(int red, int green, int blue)
+        {
+            SendEvent(new ActionEvents.ChangeLedSolidColor(red,green,blue));
+        }
 
     }
+
+
+
 
     public static class InText
     {
@@ -538,7 +661,12 @@ namespace TCPFurhatComm
         /// <returns></returns>
         public static string Gaze(float x, float y, float z)
         {
-            return "|gaze" +"("+ x + ',' + y + ',' + z +")|";
+            return "|gaze" +"("+ x.ToString(FurhatInterface.culture) + ',' + y.ToString(FurhatInterface.culture) + ',' + z.ToString(FurhatInterface.culture) +")|";
+        }
+
+        public static string Led(int red, int green, int blue)
+        {
+            return "|" + LED.Identifier + "(" + red + ',' + green + ',' + blue + ")|";
         }
 
 

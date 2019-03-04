@@ -21,10 +21,10 @@ namespace TCPFurhatComm
         /// </summary>
         public string event_id { get; set; }
 
-        /// <summary>
-        /// The name of the module that sent the event
-        /// </summary>
-        public string event_sender { get; set; }
+        ///// <summary>
+        ///// The name of the module that sent the event
+        ///// </summary>
+        //public string event_sender { get; set; }
 
         /// <summary>
         /// A timestamp when the event was created
@@ -35,7 +35,7 @@ namespace TCPFurhatComm
         {
             this.event_name = event_name;
             this.event_id = GeneralEvent.eventCount++.ToString();
-            this.event_sender = "DotNet";
+            //this.event_sender = "DotNet";
             this.event_time = new DateTime().ToString("yyyy-MM-dd HH:mm:ss:fff");
             new Location(1.0, 1.0, 1.0);
         }

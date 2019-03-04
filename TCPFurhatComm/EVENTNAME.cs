@@ -52,7 +52,7 @@ namespace TCPFurhatComm
             /// An action that can be sent to a recognizer to make it start listening.
             /// <para> [action] (int) - The ID of the action.listen event that started the speech recognizer. If this is omitted, all recognizers should stop </para>
             /// </summary>
-            public static string LISTEN_STOP = "furhatos.event.actions.ListenStop";
+            public static string LISTEN_STOP = "furhatos.event.actions.ActionListenStop";
 
 
             /// <summary>
@@ -76,6 +76,11 @@ namespace TCPFurhatComm
             /// </summary>
             public static string FACE_TEXTURE = "furhatos.event.actions.ActionConfigFace";
 
+            public static string LED_SOLID = "furhatos.event.actions.ActionSetSolidLED";
+
+            public static string ATTEND = "furhatos.event.actions.ActionAttend";
+
+            public static string SKILL_CONNECT = "furhatos.event.actions.ActionSkillConnect";
 
         }
 
@@ -109,14 +114,11 @@ namespace TCPFurhatComm
 
         public static class SENSE
         {
-            public static class SPEECH
-            {
-                /// <summary>
-                /// Once the recognition is done, one event that matches sense.speech.rec** is reported. See the different variants below. If speech recognition is successful, sense.speech.rec will be generated(without suffix). Note that this includes cases where no grammar matched the recogniton, in which case the "text" parameter will be set to NOMATCH".
-                /// </summary>
-                public static string REC = "furhatos.event.senses.SenseSpeech";
 
-            }
+            public static string SPEECH = "furhatos.event.senses.SenseSpeech";
+
+
+            public static string USERS = "furhatos.event.senses.SenseUsers";
         }
     }
 }

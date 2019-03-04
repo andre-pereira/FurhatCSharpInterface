@@ -36,6 +36,7 @@ namespace TCPFurhatComm
             }
         }
 
+
         /// <summary>
         /// An action that can be sent to a synthesizer to change the voice by name.
         /// </summary>
@@ -63,19 +64,19 @@ namespace TCPFurhatComm
             public int maxSpeechTimeout { get; set; }
             public int nbest { get; set; }
             //public string context { get; set; }
-            public bool interimResults { get; set; }
+            //public bool interimResults { get; set; }
 
         /// <param name="endSilTimeout"> The silence timeout (in msec) to detect end-of-speech </param>
         /// <param name="noSpeechTimeout"> The silence timout (in msec) if no speech is detected </param>
         /// <param name="nbest"> The maximum number of hypotheses to generate </param>
-        public StartListening(int endSilTimeout, int noSpeechTimeout, int nbest, int maxSpeechTimeout):base(EVENTNAME.ACTION.LISTEN)
+        public StartListening(int endSilTimeout, int noSpeechTimeout, int nbest, int maxSpeechTimeout/*, bool interimResults*/):base(EVENTNAME.ACTION.LISTEN)
             {
                 //this.context = "default";
                 this.endSilTimeout = endSilTimeout;
                 this.noSpeechTimeout = noSpeechTimeout;
                 this.maxSpeechTimeout = maxSpeechTimeout;
                 this.nbest = nbest;
-                this.interimResults = false;
+                //this.interimResults = interimResults;
             }
         }
 
@@ -104,20 +105,88 @@ namespace TCPFurhatComm
             }
         }
 
+        public class SkillConnect : GeneralEvent
+        {
+            public string name { get; set; }
+
+            public SkillConnect(string name) : base(EVENTNAME.ACTION.SKILL_CONNECT)
+            {
+                this.name = name;
+            }
+        }
+
+        public class Attend : GeneralEvent
+        {
+            public string target { get; set; }
+            public int mode { get; set; }
+            public int speed { get; set; }
+
+            public Attend(string target, int mode = 0, int speed = 2) : base(EVENTNAME.ACTION.ATTEND)
+            {
+                this.target = target;
+                this.mode = mode;
+                this.speed = speed;
+            }
+        }
+
+        public class AttendWithRoll : GeneralEvent
+        {
+            public string target { get; set; }
+            public int mode { get; set; }
+            public int speed { get; set; }
+            public double roll { get; set; }
+
+            public AttendWithRoll(string target, int mode = 0, int speed = 2, double roll = 0) : base(EVENTNAME.ACTION.ATTEND)
+            {
+                this.target = target;
+                this.mode = mode;
+                this.speed = speed;
+                this.roll = roll;
+            }
+        }
+
         /// <summary>
         /// Makes the agent shift gaze to a certain location in 3D space
         /// </summary>
         public class PerformGaze : GeneralEvent
         {
             public Location location { get; set; }
-            public string mode { get; set; }
+            public int mode { get; set; }
+            public int speed { get; set; }
+            //public bool calculateSpline { get; set; }
 
             /// <param name="location"> The 3D location where the agent should gaze </param>
             /// <param name="mode"> Can be "default", "eyes" or "headpose" </param>
-            public PerformGaze(Location location, string mode) : base(EVENTNAME.ACTION.GAZE)
+            public PerformGaze(Location location, int mode, int speed/*, bool calculateSpline*/) : base(EVENTNAME.ACTION.GAZE)
             {
                 this.location = location;
                 this.mode = mode;
+                this.speed = speed;
+                //this.calculateSpline = calculateSpline;
+            }
+        }
+
+
+        /// <summary>
+        /// Makes the agent shift gaze to a certain location in 3D space
+        /// </summary>
+        public class PerformGazeWithRoll : GeneralEvent
+        {
+            public Location location { get; set; }
+            public int mode { get; set; }
+            public int speed { get; set; }
+            public float roll { get; set; }
+            //public bool calculateSpline { get; set; }
+
+            /// <param name="location"> The 3D location where the agent should gaze </param>
+            /// <param name="mode"> Can be "default", "eyes" or "headpose" </param>
+            public PerformGazeWithRoll(Location location, int mode, int speed, float roll/*, bool calculateSpline*/) : base(EVENTNAME.ACTION.GAZE)
+            {
+                this.location = location;
+                this.mode = mode;
+                this.speed = speed;
+                this.roll = roll;
+                //this.calculateSpline = calculateSpline;
             }
         }
 
@@ -132,6 +201,24 @@ namespace TCPFurhatComm
             public ChangeFaceTexture(string texture) : base(EVENTNAME.ACTION.FACE_TEXTURE)
             {
                 this.texture = texture;
+            }
+        }
+
+        /// <summary>
+        /// Changes the led color of the robot.
+        /// </summary>
+        public class ChangeLedSolidColor : GeneralEvent
+        {
+            public int red { get; set; }
+            public int green { get; set; }
+            public int blue { get; set; }
+
+            /// <param name="texture"> The name of the texture </param>
+            public ChangeLedSolidColor(int red, int green, int blue) : base(EVENTNAME.ACTION.LED_SOLID)
+            {
+                this.red = red;
+                this.green = green;
+                this.blue = blue;
             }
         }
 
