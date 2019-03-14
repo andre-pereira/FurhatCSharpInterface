@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Net;
-using System.Net.Sockets;
-using System.Threading;
-using System.Text;
-using Newtonsoft.Json;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace TCPFurhatComm
 {
@@ -13,18 +9,25 @@ namespace TCPFurhatComm
         public static void Main(String[] args)
         {
             //CONNECT TO FURHAT USING THE ROBOT'S IP PORT
-            FurhatInterface furhat = new FurhatInterface("130.237.67.172");
-            furhat.ConnectSkill("DotNet Example Skill");
+            FurhatInterface furhat = new FurhatInterface("130.237.67.215", nameForSkill: "CSharp Example");
+            furhat.EnableMicroexpressions(false);
 
             //CHANGE TO DEFAULT TEXTURE AND VOICE
             furhat.FaceTexture(FACETEXTURES.DEFAULT);
             furhat.ChangeVoice(VOICES.EN_US_AMAZON_JOEY);
             furhat.ChangeLed(0, 0, 0);
-            furhat.EnableMicroexpressions(false);
+            furhat.EnableMicroexpressions(true);
+            furhat.Gesture(GESTURES.EYES_CLOSE);
+
+            Console.WriteLine("[Press Enter To Start Demonstration]");
+            Console.ReadLine();
 
             //SAY DEMONSTRATION
+            furhat.Gesture(GESTURES.EYES_OPEN);
             Console.WriteLine("Say Demonstration\n[Press Enter To Continue]");
-            furhat.Say("Welcome to the Furhat C Sharp interface example. Press enter to continue.");
+            furhat.Say("Good that you woke me up.");
+            furhat.Say("I was feeling pretty bored.", GESTURES.MOOD_BORED);
+            furhat.Say("Welcome to the Furhat C Sharp interface.", GESTURES.MOOD_EXCITED);
             Console.ReadLine();
             Console.Clear();
 
@@ -32,7 +35,7 @@ namespace TCPFurhatComm
             Console.WriteLine("Gestures and LED Demonstration.\n[Press Enter To Continue]");
             furhat.ChangeLed(100, 100, 100);
             furhat.Gesture(GESTURES.SMILE_BIG);
-            furhat.Say($"Here you can use LED's and perform gestures in the middle {InText.Gesture(GESTURES.ANGER)} {InText.Led(255, 0, 0)} of the text using three different alternatives |gesture(Surprise)| |led(0,0,0)|");
+            furhat.Say($"Here you can use LED's and gestures {InText.Gesture(GESTURES.ANGER)} {InText.Led(255, 0, 0)} using many different alternatives |gesture(Surprise)| |led(0,0,0)|");
             Console.ReadLine();
             Console.Clear();
 
@@ -47,7 +50,7 @@ namespace TCPFurhatComm
             //FACE TEXTURE DEMONSTRATION
             Console.WriteLine("Face Texture Demonstration.\n[Press Enter To Continue]");
             furhat.FaceTexture(FACETEXTURES.IROBOT);
-            furhat.Say($"I can look less like a person, |facetexture(avatar)| like a creature  or more like a {InText.FaceTexture(FACETEXTURES.MALE)} person ");
+            furhat.Say($"I can look less like a person, |facetexture(avatar)| like a creature  or more like a {InText.FaceTexture(FACETEXTURES.MALE)} human ");
             Console.ReadLine();
             Console.Clear();
 
@@ -77,7 +80,8 @@ namespace TCPFurhatComm
             //SPEECH RECOGNITION DEMONSTRATION
             Console.Write("Speech Recognition Demonstration.\n[Press Enter To Continue]");
             furhat.SayBlock("I can recognize and reapeat what you say"); //Say block must be used so that listen is executed synchrounously
-            furhat.StartListening();
+            furhat.StartListening(withPartialResults: true);
+            furhat.RecognizedPartialSpeechAction = new Action<string>((s) => Console.WriteLine("Recognized Partial String: " + s));
             furhat.RecognizedSpeechAction = new Action<string>((s) => furhat.Say(s));
             Console.ReadLine();
             furhat.StopListening();

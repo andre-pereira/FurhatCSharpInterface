@@ -7,7 +7,6 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace TCPFurhatComm
 {
@@ -35,7 +34,7 @@ namespace TCPFurhatComm
         /// </summary>
         private Dictionary<string, Action<string>> SubscribedEvents;
 
-        internal void EnableMicroexpressions(bool enable)
+        public void EnableMicroexpressions(bool enable)
         {
             string hardcodedToDisable = "{\"event_id\":\"0ba36e04-912e-48c5-910e-6658933dfe33\",\"event_name\":\"furhatos.event.actions.ActionMicroexpression\",\"microexpression\":{\"repeats\":[],\"fluctuations\":[],\"name\":\"setDefaultMicroexpression\"},\"event_time\":\"2019-03-03 17:49:44.004\"}";
             //string hardcodedToDisable = "{\"event_name\":\"furhatos.event.actions.ActionMicroexpression\",\"microexpression\":{\"repeats\":[],\"fluctuations\":[],\"name\":\"setDefaultMicroexpression\"}}";
@@ -62,7 +61,7 @@ namespace TCPFurhatComm
         /// <summary>
         /// This variable holds a queue of speech that is enqued in the speech.end event
         /// </summary>
-        private Queue<Tuple<string,string>> SayQueue;
+        private Queue<Tuple<string,KeyFramedGesture>> SayQueue;
 
         /// <summary>
         /// Variable is true whenever furhat is in the middle of speaking
@@ -88,7 +87,7 @@ namespace TCPFurhatComm
         /// <summary>
         /// Action called whenever a speech synthesis event is finished
         /// </summary>
-        public Action EndSpeechActionAction;
+        public Action EndSpeechAction;
 
         /// <summary>
         /// Action called whenever furhat system senses users
@@ -100,6 +99,13 @@ namespace TCPFurhatComm
         /// Action called whenever the Speech Recognizer returns an event
         /// </summary>
         public Action<string> RecognizedSpeechAction;
+
+
+        /// <summary>
+        /// Action called whenever the Speech Recognizer returns a partial result
+        /// </summary>
+        public Action<string> RecognizedPartialSpeechAction;
+        public string CurrentMood { get; private set; }
 
 
         ///// <summary>
@@ -116,14 +122,14 @@ namespace TCPFurhatComm
         /// </summary>
         /// <param name="ipAddress"> The Ip address of the furhat robot. Use "localhost" if you are using the dev-server or running this code on the robot</param>
         /// <param name="port"> The port to the tcp socket in IrisTK (default one is "1932") </param>
-        public FurhatInterface(string ipAddress = "localhost", int port = 1932)
+        public FurhatInterface(string ipAddress = "localhost", int port = 1932, string nameForSkill = null)
         {
             culture = new CultureInfo("en-US", false);
 
             currentWord = -1;
 
             inMiddleOfSpeaking = false;
-            SayQueue = new Queue<Tuple<string, string>>();
+            SayQueue = new Queue<Tuple<string, KeyFramedGesture>>();
 
             SubscribedEvents = new Dictionary<string, Action<string>>();
             MidTextActions = new List<Tuple<int, string, string>>();
@@ -136,7 +142,8 @@ namespace TCPFurhatComm
             SubscribeToEvent(EVENTNAME.SENSE.SPEECH, new Action<string>(SpeechSensedEvent));
             SubscribeToEvent(EVENTNAME.SENSE.USERS, new Action<string>(UsersSensedEvent));
 
-
+            if(nameForSkill != null)
+                ConnectSkill(nameForSkill);
         }
 
 
@@ -228,22 +235,30 @@ namespace TCPFurhatComm
 
         private void UsersSensedEvent(string obj)
         {
-            List<User> users = new List<User>();
-            JObject o = JObject.Parse(obj);
-            var usersJson = o.GetValue("users").Children();
-            foreach (var user in usersJson)
+            try
             {
-                User u = new User();
-                var currentUser = user.First;
-                JObject head = currentUser.Value<JObject>("head");
-                JToken rot = head.GetValue("rotation");
-                JToken loc = head.GetValue("location");
-                u.id = currentUser.Value<string>("id");
-                u.location = new Vector3Simple(loc.Value<float>("x"), loc.Value<float>("y"), loc.Value<float>("z"));
-                u.rotation = new Vector3Simple(rot.Value<float>("x"), rot.Value<float>("y"), rot.Value<float>("z"));
-                users.Add(u);
+                List<User> users = new List<User>();
+                JObject o = JObject.Parse(obj);
+                var usersJson = o.GetValue("users").Children();
+                foreach (var user in usersJson)
+                {
+                    User u = new User();
+                    var currentUser = user.First;
+                    JObject head = currentUser.Value<JObject>("head");
+                    JToken rot = head.GetValue("rotation");
+                    JToken loc = head.GetValue("location");
+                    u.id = currentUser.Value<string>("id");
+                    u.location = new Vector3Simple(loc.Value<float>("x"), loc.Value<float>("y"), loc.Value<float>("z"));
+                    u.rotation = new Vector3Simple(rot.Value<float>("x"), rot.Value<float>("y"), rot.Value<float>("z"));
+                    users.Add(u);
+                }
+                SensedUsersAction?.Invoke(users);
             }
-            SensedUsersAction?.Invoke(users);
+            catch (Exception)
+            {
+                
+            }
+
         }
 
         /// <summary>
@@ -253,7 +268,10 @@ namespace TCPFurhatComm
         private void SpeechSensedEvent(string str)
         {
             JObject o = JObject.Parse(str);
-            RecognizedSpeechAction?.Invoke(o.GetValue("text").ToString());
+            if ((bool)o.GetValue("interim") == false)
+                RecognizedSpeechAction?.Invoke(o.GetValue("text").ToString());
+            else
+                RecognizedPartialSpeechAction?.Invoke(o.GetValue("text").ToString());
         }
 
         /// <summary>
@@ -292,23 +310,28 @@ namespace TCPFurhatComm
                     ExecuteAction(item);
             }
 
-            MidTextActions.Clear();
+
             MonitorEvents.MonitorSpeechEnd speechWordEvent = JsonConvert.DeserializeObject<MonitorEvents.MonitorSpeechEnd>(ev);
-
-            inMiddleOfSpeaking = false;
-
-            EndSpeechActionAction?.Invoke();
-
-            currentWord = -1;
+            SpeechEndInternal();
 
             if (SayQueue.Count > 0)
             {
                 var toSayNext = SayQueue.Dequeue();
-                if (toSayNext.Item2 == null)
-                    Say(toSayNext.Item1);
-                //else
-                //    Say(toSayNext.Item1, toSayNext.Item2);
+                Say(toSayNext.Item1, toSayNext.Item2);
             }
+        }
+
+        private void SpeechEndInternal()
+        {
+            MidTextActions.Clear();
+            inMiddleOfSpeaking = false;
+            if (CurrentMood != null)
+            {
+                Gesture(GESTURES.MOOD_NEUTRAL);
+                CurrentMood = null;
+            }
+            EndSpeechAction?.Invoke();
+            currentWord = -1;
         }
 
         /// <summary>
@@ -372,13 +395,19 @@ namespace TCPFurhatComm
         /// <summary>
         ///Sends a text speech event to the synthesizer and adds an utterance to the speech queue
         /// </summary>
-        /// <param name="text"> The text to speak </param>
-        public void Say(string text)
+        public void Say(string text, KeyFramedGesture mood = null)
         {
             if (inMiddleOfSpeaking)
-                SayQueue.Enqueue(new Tuple<string, string>(text, null));
+                SayQueue.Enqueue(new Tuple<string, KeyFramedGesture>(text, mood));
             else
             {
+                if (mood != null)
+                {
+                    Gesture(mood);
+                    CurrentMood = mood.name;
+                }
+                else CurrentMood = null;
+                    
                 //midtextaction are divided by | if there is such separator we should process them
                 var midTextActions = text.Split('|');
 
@@ -415,7 +444,7 @@ namespace TCPFurhatComm
         public void SayStop()
         {
             SayQueue.Clear();
-            inMiddleOfSpeaking = false;
+            SpeechEndInternal();
             SendEvent(new ActionEvents.StopSpeech());
         }
 
@@ -496,9 +525,9 @@ namespace TCPFurhatComm
         /// <summary>
         /// An action that is sent to the IRISTK recognizer to make it start listening.
         /// </summary>
-        public void StartListening(int endSilTimeout = 700, int noSpeechTimeout = 8000, int nbest = 1, int maxSpeechTimeout = 15000/*, bool withIntermediateResults = false*/)
+        public void StartListening(int endSilTimeout = 700, int noSpeechTimeout = 8000, int nbest = 1, int maxSpeechTimeout = 15000, bool withPartialResults = false)
         {
-            SendEvent(new ActionEvents.StartListening(endSilTimeout, noSpeechTimeout, nbest, maxSpeechTimeout/*, withIntermediateResults*/));
+            SendEvent(new ActionEvents.StartListening(endSilTimeout, noSpeechTimeout, nbest, maxSpeechTimeout, withPartialResults));
         }
 
         /// <summary>
@@ -594,11 +623,69 @@ namespace TCPFurhatComm
 
         /// <summary>
         /// Makes the agent perform a specific gesture.
+        /// You can also prioritize gestures based on the priority parameter
+        /// Duration and Intensity only works for custom created gestures defined in GESTURES.cs
+        /// </summary>
+        public void Gesture(string gesture, int priority = 0, float duration = 1, float intensity = 1)
+        {
+            if (GESTURES.customGestures.ContainsKey(gesture))
+                GestureCustom(GESTURES.customGestures[gesture], priority, duration, intensity);
+            else SendEvent(new ActionEvents.PerformGesture(gesture, priority));
+        }
+
+        /// <summary>
+        /// Makes the agent perform a specific gesture.
         /// </summary>
         /// <param name="gesture"> The name of the gesture </param>
-        public void Gesture(string gesture)
+        public void Gesture(KeyFramedGesture gesture, int priority = 0, float duration = 1, float intensity = 1)
         {
-            SendEvent(new ActionEvents.PerformGesture(gesture));
+            GestureCustom(gesture, priority, duration, intensity);
+        }
+
+        public void ChangeParameter(PARAMS parameter, float duration, float intensity, int priority = 0)
+        {
+            // Duration and priority will be set to one
+            KeyFramedGesture changeParam = new KeyFramedGesture("Change " + parameter.ToString(), new List<float> { 1 }, 
+                new List<keyFramedPARAM> {new keyFramedPARAM(parameter, new List<float>{1})});
+
+            //Call the gesture with the right duration and intensity
+            Gesture(changeParam, priority, duration, intensity);
+        }
+
+
+
+        internal void GestureCustom(Gesture gesture, int priority = 0)
+        {
+            SendEvent(new ActionEvents.PerformCustomGesture(gesture, priority));
+        }
+
+        internal void GestureCustom(KeyFramedGesture gesture, int priority = 0, float duration = 0, float intensity = 0)
+        {
+            SendEvent(new ActionEvents.PerformCustomGesture(transformGesture(gesture, duration, intensity), priority));
+        }
+
+        private Gesture transformGesture(KeyFramedGesture gesture, float duration, float intensity)
+        {
+            List<Frame> frames = new List<Frame>();
+            for (int i = 0; i < gesture.keyFrameTimes.Count; i++)
+            {
+                Dictionary<string, dynamic> parameters = new Dictionary<string, dynamic>();
+
+                foreach (var kfParam in gesture.frames)
+                {
+                    if (i > 0)
+                    {
+                        //Check if the previous keyframe was the same. If so there is no need to add the parameter.
+                        if (kfParam.keyFrameValues[i - 1] == kfParam.keyFrameValues[i])
+                            continue;
+                    }
+                    parameters.Add(kfParam.param.ToString(), kfParam.keyFrameValues[i] * intensity);
+                }
+
+                frames.Add(new Frame(true, new List<float> { gesture.keyFrameTimes[i] * duration }, parameters));
+            }
+            Gesture transformedGesture = new Gesture(gesture.name, frames);
+            return transformedGesture;
         }
 
         #endregion

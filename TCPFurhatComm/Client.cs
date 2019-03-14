@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 using ExtensionMethods;
 
 namespace TCPFurhatComm
@@ -113,9 +110,16 @@ namespace TCPFurhatComm
 
         private void TriggerMessageEvent(string str)
         {
-            var strDividedBySpaces = str.Split(' ');
-            var jsonStr = str.Substring(str.IndexOf('{'));
-            MessageReceived(strDividedBySpaces[1], jsonStr);
+            try
+            {
+                var strDividedBySpaces = str.Split(' ');
+                var jsonStr = str.Substring(str.IndexOf('{'));
+                MessageReceived(strDividedBySpaces[1], jsonStr);
+            }
+            catch (Exception)
+            {
+
+            }
         }
 
     }

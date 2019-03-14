@@ -63,20 +63,19 @@ namespace TCPFurhatComm
             public int noSpeechTimeout { get; set; }
             public int maxSpeechTimeout { get; set; }
             public int nbest { get; set; }
-            //public string context { get; set; }
-            //public bool interimResults { get; set; }
+            public bool interimResults { get; set; }
 
         /// <param name="endSilTimeout"> The silence timeout (in msec) to detect end-of-speech </param>
         /// <param name="noSpeechTimeout"> The silence timout (in msec) if no speech is detected </param>
         /// <param name="nbest"> The maximum number of hypotheses to generate </param>
-        public StartListening(int endSilTimeout, int noSpeechTimeout, int nbest, int maxSpeechTimeout/*, bool interimResults*/):base(EVENTNAME.ACTION.LISTEN)
+        public StartListening(int endSilTimeout, int noSpeechTimeout, int nbest, int maxSpeechTimeout, bool interimResults) :base(EVENTNAME.ACTION.LISTEN)
             {
                 //this.context = "default";
                 this.endSilTimeout = endSilTimeout;
                 this.noSpeechTimeout = noSpeechTimeout;
                 this.maxSpeechTimeout = maxSpeechTimeout;
                 this.nbest = nbest;
-                //this.interimResults = interimResults;
+                this.interimResults = interimResults;
             }
         }
 
@@ -97,11 +96,30 @@ namespace TCPFurhatComm
         public class PerformGesture : GeneralEvent
         {
             public string name { get; set; }
+            public int priority { get; set; }
 
             /// <param name="name"> The name of the gesture </param>
-            public PerformGesture(string name):base(EVENTNAME.ACTION.GESTURE)
+            public PerformGesture(string name, int priority):base(EVENTNAME.ACTION.GESTURE)
             {
                 this.name = name;
+                this.priority = priority;
+            }
+        }
+
+
+        /// <summary>
+        /// Makes the agent perform a specific gesture.
+        /// </summary>
+        public class PerformCustomGesture : GeneralEvent
+        {
+            public Gesture gesture { get; set; }
+            public int priority { get; set; }
+
+            /// <param name="name"> The name of the gesture </param>
+            public PerformCustomGesture(Gesture gesture, int priority) : base(EVENTNAME.ACTION.GESTURE)
+            {
+                this.gesture = gesture;
+                this.priority = priority;
             }
         }
 
@@ -224,4 +242,5 @@ namespace TCPFurhatComm
 
 
     }
+
 }
