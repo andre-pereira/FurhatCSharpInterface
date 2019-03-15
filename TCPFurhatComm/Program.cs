@@ -22,7 +22,6 @@ namespace TCPFurhatComm
             furhat.ChangeLed(0, 0, 0);
             furhat.Gesture(GESTURES.EYES_CLOSE);
 
-
             Console.WriteLine("[Press Enter To Start Demonstration]");
             Console.ReadLine();
             Console.Clear();
@@ -111,7 +110,7 @@ namespace TCPFurhatComm
             furhat.Say("let me tell you 3 jokes.");
             for (int i = 0; i < 3; i++)
             {
-                furhat.sayDialogAct("Jokes", vars);
+                furhat.SayDialogAct("Jokes", vars);
             }
 
             Console.ReadLine();

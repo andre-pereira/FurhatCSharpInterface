@@ -387,7 +387,7 @@ namespace TCPFurhatComm
 
         #region Speech
 
-        internal void sayDialogAct(string dialogAct, Dictionary<string, string> keyValuePairs = null)
+        public void SayDialogAct(string dialogAct, Dictionary<string, string> keyValuePairs = null)
         {
             Behavior behaviorToSay = dialogActs?.getRandomBehavior(dialogAct);
 
