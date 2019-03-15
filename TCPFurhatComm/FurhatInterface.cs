@@ -63,6 +63,9 @@ namespace TCPFurhatComm
         /// </summary>
         private Queue<Tuple<string,KeyFramedGesture, Dictionary<string, string>>> SayQueue;
 
+
+        private bool gazeDeactivated;
+
         /// <summary>
         /// Variable is true whenever furhat is in the middle of speaking
         /// </summary>
@@ -123,6 +126,8 @@ namespace TCPFurhatComm
 
         public Action<string> CustomEvent;
 
+        public Action<string> SentSayEvent;
+
         #endregion Actions
 
         #region Constructors and Initialization
@@ -145,6 +150,7 @@ namespace TCPFurhatComm
             inMiddleOfSpeaking = false;
             SayQueue = new Queue<Tuple<string, KeyFramedGesture, Dictionary<string,string>>>();
 
+            gazeDeactivated = false;
             SubscribedEvents = new Dictionary<string, Action<string>>();
             MidTextActions = new List<Tuple<int, string, string>>();
             client = new Client(ipAddress, port);
@@ -346,6 +352,7 @@ namespace TCPFurhatComm
                 CurrentMood = null;
             }
             EndSpeechAction?.Invoke();
+            gazeDeactivated = false;
             currentWord = -1;
         }
 
@@ -376,6 +383,7 @@ namespace TCPFurhatComm
                 case "gaze":
                     var gazeValues = item.Item3.Split(',');
                     Gaze(float.Parse(gazeValues[0], culture), float.Parse(gazeValues[1], culture), float.Parse(gazeValues[2], culture));
+                    gazeDeactivated = true;
                     break;
                 case "event":
                     CustomEvent?.Invoke(item.Item3);
@@ -400,10 +408,10 @@ namespace TCPFurhatComm
                 mood = GESTURES.customGestures[behaviorToSay.emotion];
             }
 
-            Say(behaviorToSay.text, mood, keyValuePairs);
-
             if (behaviorToSay.customEvent != "")
                 CustomEvent?.Invoke(behaviorToSay.customEvent);
+
+            Say(behaviorToSay.text, mood, keyValuePairs);
         }
 
         /// <summary>
@@ -422,7 +430,9 @@ namespace TCPFurhatComm
         public void Say(string text, KeyFramedGesture mood = null, Dictionary<string,string> keyValuePairs = null)
         {
             if (inMiddleOfSpeaking)
+            {
                 SayQueue.Enqueue(new Tuple<string, KeyFramedGesture, Dictionary<string, string>>(text, mood, keyValuePairs));
+            }
             else
             {
                 if (mood != null)
@@ -431,21 +441,23 @@ namespace TCPFurhatComm
                     CurrentMood = mood.name;
                 }
                 else CurrentMood = null;
-                    
+
                 //midtextaction are divided by | if there is such separator we should process them
                 var midTextActions = text.Split('|');
 
                 if (midTextActions.Count() > 1)
                 {
-                    if(keyValuePairs != null)
+                    if (keyValuePairs != null)
                         text = replaceVariables(text, keyValuePairs);
                     FillMidTextActions(text);
                     text = Regex.Replace(text, @"\|.*?\|", String.Empty);
                     Say(text);
+                    SentSayEvent?.Invoke(text);
                 }
                 else
                 {
                     Say(text);
+                    SentSayEvent?.Invoke(text);
                 }
             }
         }
@@ -660,6 +672,9 @@ namespace TCPFurhatComm
         /// <param name="location"> The 3D location where the agent should gaze </param>
         public void Gaze(Vector3Simple location)
         {
+            if (gazeDeactivated)
+                return;
+
             if (rollEnabled)
                 SendEvent(new ActionEvents.PerformGazeWithRoll(location, gazeMode, gazeSpeed, gazeRoll));
             else
@@ -679,7 +694,10 @@ namespace TCPFurhatComm
             Gaze(new Vector3Simple(x, y, z));
         }
 
-        public void Attend(string name, int mode = 0, int speed = 2, double roll = 0)
+        /// <summary>
+        /// Not working yet, Furhat has to make it work without being in their Kotlin Skills
+        /// </summary>
+        internal void Attend(string name, int mode = 0, int speed = 2, double roll = 0)
         {
             if(rollEnabled)
                 SendEvent(new ActionEvents.AttendWithRoll(name, mode, speed, roll));
