@@ -168,14 +168,14 @@ namespace TCPFurhatComm
         /// </summary>
         public class PerformGaze : GeneralEvent
         {
-            public Location location { get; set; }
+            public Vector3Simple location { get; set; }
             public int mode { get; set; }
             public int speed { get; set; }
             //public bool calculateSpline { get; set; }
 
             /// <param name="location"> The 3D location where the agent should gaze </param>
             /// <param name="mode"> Can be "default", "eyes" or "headpose" </param>
-            public PerformGaze(Location location, int mode, int speed/*, bool calculateSpline*/) : base(EVENTNAME.ACTION.GAZE)
+            public PerformGaze(Vector3Simple location, int mode, int speed/*, bool calculateSpline*/) : base(EVENTNAME.ACTION.GAZE)
             {
                 this.location = location;
                 this.mode = mode;
@@ -190,7 +190,7 @@ namespace TCPFurhatComm
         /// </summary>
         public class PerformGazeWithRoll : GeneralEvent
         {
-            public Location location { get; set; }
+            public Vector3Simple location { get; set; }
             public int mode { get; set; }
             public int speed { get; set; }
             public float roll { get; set; }
@@ -198,7 +198,7 @@ namespace TCPFurhatComm
 
             /// <param name="location"> The 3D location where the agent should gaze </param>
             /// <param name="mode"> Can be "default", "eyes" or "headpose" </param>
-            public PerformGazeWithRoll(Location location, int mode, int speed, float roll/*, bool calculateSpline*/) : base(EVENTNAME.ACTION.GAZE)
+            public PerformGazeWithRoll(Vector3Simple location, int mode, int speed, float roll/*, bool calculateSpline*/) : base(EVENTNAME.ACTION.GAZE)
             {
                 this.location = location;
                 this.mode = mode;

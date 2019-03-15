@@ -9,25 +9,36 @@ namespace TCPFurhatComm
         public static void Main(String[] args)
         {
             //CONNECT TO FURHAT USING THE ROBOT'S IP PORT
-            FurhatInterface furhat = new FurhatInterface("130.237.67.215", nameForSkill: "CSharp Example");
-            furhat.EnableMicroexpressions(false);
+            FurhatInterface furhat = new FurhatInterface("130.237.67.215", nameForSkill: "CSharp Example", filePathDialogActs: "../DialogActs.tsv");
 
-            //CHANGE TO DEFAULT TEXTURE AND VOICE
+            //CREATE A KEYVALUEPAIR DICTIONARY TO BE ABLE TO DO VARIABLE REPLACEMENT IN SAY COMMANDS
+            Dictionary<string, string> vars = new Dictionary<string, string>() {
+                { "userName", "human" }, { "robotName", "Furhat" } };
+
+            //CHANGE TO DEFAULT SLEEP SETTINGS
+            furhat.EnableMicroexpressions(false);
             furhat.FaceTexture(FACETEXTURES.DEFAULT);
             furhat.ChangeVoice(VOICES.EN_US_AMAZON_JOEY);
             furhat.ChangeLed(0, 0, 0);
-            furhat.EnableMicroexpressions(true);
             furhat.Gesture(GESTURES.EYES_CLOSE);
+
 
             Console.WriteLine("[Press Enter To Start Demonstration]");
             Console.ReadLine();
+            Console.Clear();
 
             //SAY DEMONSTRATION
             furhat.Gesture(GESTURES.EYES_OPEN);
+            furhat.CustomEvent = new Action<string>((s) => Console.WriteLine(s));
             Console.WriteLine("Say Demonstration\n[Press Enter To Continue]");
             furhat.Say("Good that you woke me up.");
             furhat.Say("I was feeling pretty bored.", GESTURES.MOOD_BORED);
-            furhat.Say("Welcome to the Furhat C Sharp interface.", GESTURES.MOOD_EXCITED);
+            Console.ReadLine();
+            Console.Clear();
+
+            //VARIABLE REPLACEMENT
+            Console.WriteLine("Variable Replacement Demonstration\n[Press Enter To Continue]");
+            furhat.Say("Hello |var(userName)|, my name is |var(robotName)| and I am here to interact with you ", keyValuePairs: vars);
             Console.ReadLine();
             Console.Clear();
 
@@ -85,13 +96,48 @@ namespace TCPFurhatComm
             furhat.RecognizedSpeechAction = new Action<string>((s) => furhat.Say(s));
             Console.ReadLine();
             furhat.StopListening();
-
             Console.Clear();
+
+            //USER DETECTION DEMONSTRATION
             Console.Write("User Detection Demonstration. Move in front of the camera or use virtual users!\n[Press Enter To Finish Example]");
             furhat.SensedUsersAction = new Action<List<User>>((users) => printUsers(users));
             Console.ReadLine();
+            furhat.SensedUsersAction = null;
+            Console.Clear();
+
+            //Dialog Acts From Files
+            Console.WriteLine("Dialog Act Demonstration\n[Press Enter To Continue]");
+            furhat.CustomEvent = new Action<string>((s) => HandleCustomEvents(furhat,s));
+            furhat.Say("let me tell you 3 jokes.");
+            for (int i = 0; i < 3; i++)
+            {
+                furhat.sayDialogAct("Jokes", vars);
+            }
+
+            Console.ReadLine();
 
             Environment.Exit(0);
+        }
+
+        private static void HandleCustomEvents(FurhatInterface furhat, string str)
+        {
+            switch (str)
+            {
+                case "lookLeft":
+                    furhat.Gaze(-1, 0, 1);
+                    break;
+                case "lookCenter":
+                    furhat.Gaze(0, 0, 1);
+                    break;
+                case "lookAtUser":
+                    if (furhat.users != null)
+                        furhat.Gaze(furhat.users[0].location);
+                    break;
+                default:
+                    break;
+            }
+            Console.WriteLine("Custom event triggered: " + str);
+            
         }
 
         private static void printUsers(List<User> users)

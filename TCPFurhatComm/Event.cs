@@ -32,21 +32,7 @@ namespace TCPFurhatComm
             this.event_id = GeneralEvent.eventCount++.ToString();
             //this.event_sender = "DotNet";
             this.event_time = new DateTime().ToString("yyyy-MM-dd HH:mm:ss:fff");
-            new Location(1.0, 1.0, 1.0);
-        }
-    }
-
-    public class Location
-    {
-        public double x { get; set; }
-        public double y { get; set; }
-        public double z { get; set; }
-
-        public Location(double x, double y, double z)
-        {
-            this.x = x;
-            this.y = y;
-            this.z = z;
+            new Vector3Simple(1.0, 1.0, 1.0);
         }
     }
 

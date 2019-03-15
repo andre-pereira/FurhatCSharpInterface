@@ -71,6 +71,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActionEvents.cs" />
+    <Compile Include="DialogActs.cs" />
     <Compile Include="Event.cs" />
     <Compile Include="EVENTNAME.cs" />
     <Compile Include="FACETEXTURES.cs" />

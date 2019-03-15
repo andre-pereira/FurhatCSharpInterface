@@ -116,9 +116,9 @@ namespace TCPFurhatComm
                 var jsonStr = str.Substring(str.IndexOf('{'));
                 MessageReceived(strDividedBySpaces[1], jsonStr);
             }
-            catch (Exception)
+            catch (Exception e)
             {
-
+                Console.WriteLine(e.ToString());
             }
         }
 

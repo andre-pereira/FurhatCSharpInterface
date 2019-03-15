@@ -1,0 +1,8 @@
+Dialog Act	Behavior	Mood	Custom Event
+Jokes	|var(userName)|, I dreamed  I was forced to eat a giant marshmallow. When I woke up, my pillow was gone.		lookAtUser
+Jokes	I invented a new word |var(userName)|. Plagiarism!	MoodExcited	
+Jokes	|event(lookLeft)|AH. AH, |event(lookCenter)|AH Ah		
+Inspirational Quotes	Our greatest glory is not in never falling, but in rising every time we fall.		
+Inspirational Quotes	It does not matter how slowly you go as long as you do not stop.		
+Inspirational Quotes	All our dreams can come true, if we have the courage to pursue them.		
+Inspirational Quotes	Everything you’ve ever wanted is on the other side of fear.		

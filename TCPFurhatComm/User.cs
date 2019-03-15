@@ -13,11 +13,11 @@ namespace TCPFurhatComm
 
     public class Vector3Simple
     {
-        public float x;
-        public float y;
-        public float z;
+        public double x;
+        public double y;
+        public double z;
 
-        public Vector3Simple(float x, float y, float z)
+        public Vector3Simple(double x, double y, double z)
         {
             this.x = x;
             this.y = y;

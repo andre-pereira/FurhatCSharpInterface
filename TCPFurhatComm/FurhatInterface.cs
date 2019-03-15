@@ -61,7 +61,7 @@ namespace TCPFurhatComm
         /// <summary>
         /// This variable holds a queue of speech that is enqued in the speech.end event
         /// </summary>
-        private Queue<Tuple<string,KeyFramedGesture>> SayQueue;
+        private Queue<Tuple<string,KeyFramedGesture, Dictionary<string, string>>> SayQueue;
 
         /// <summary>
         /// Variable is true whenever furhat is in the middle of speaking
@@ -80,6 +80,21 @@ namespace TCPFurhatComm
         private float gazeRoll = 0;
 
         private bool rollEnabled = false;
+
+        /// <summary>
+        /// Variable that holds the name of the current mood the robot is on
+        /// </summary>
+        public string CurrentMood { get; private set; }
+
+        /// <summary>
+        /// Variable that can be accessed to look at the current users being detected
+        /// We recommend to use the Action SensedUsersAction to get this information in a timely manner
+        /// </summary>
+        public List<User> users { get; private set; }
+
+        private DialogActs dialogActs;
+
+        
 
         #endregion
 
@@ -105,13 +120,8 @@ namespace TCPFurhatComm
         /// Action called whenever the Speech Recognizer returns a partial result
         /// </summary>
         public Action<string> RecognizedPartialSpeechAction;
-        public string CurrentMood { get; private set; }
 
-
-        ///// <summary>
-        ///// Start with a null value and can be filled by using the LoadCategoryFileMethod
-        ///// </summary>
-        //private Dictionary<string, List<Behavior>> utteranceList;
+        public Action<string> CustomEvent;
 
         #endregion Actions
 
@@ -122,14 +132,18 @@ namespace TCPFurhatComm
         /// </summary>
         /// <param name="ipAddress"> The Ip address of the furhat robot. Use "localhost" if you are using the dev-server or running this code on the robot</param>
         /// <param name="port"> The port to the tcp socket in IrisTK (default one is "1932") </param>
-        public FurhatInterface(string ipAddress = "localhost", int port = 1932, string nameForSkill = null)
+        public FurhatInterface(string ipAddress = "localhost", int port = 1932, string nameForSkill = null, string filePathDialogActs = null, bool ignoreFirstLine = true)
         {
+            users = null;
             culture = new CultureInfo("en-US", false);
+
+            if (filePathDialogActs != null)
+                dialogActs = new DialogActs(filePathDialogActs, ignoreFirstLine);
 
             currentWord = -1;
 
             inMiddleOfSpeaking = false;
-            SayQueue = new Queue<Tuple<string, KeyFramedGesture>>();
+            SayQueue = new Queue<Tuple<string, KeyFramedGesture, Dictionary<string,string>>>();
 
             SubscribedEvents = new Dictionary<string, Action<string>>();
             MidTextActions = new List<Tuple<int, string, string>>();
@@ -252,6 +266,8 @@ namespace TCPFurhatComm
                     u.rotation = new Vector3Simple(rot.Value<float>("x"), rot.Value<float>("y"), rot.Value<float>("z"));
                     users.Add(u);
                 }
+                if(users.Count > 0)
+                    this.users = users;
                 SensedUsersAction?.Invoke(users);
             }
             catch (Exception)
@@ -310,7 +326,6 @@ namespace TCPFurhatComm
                     ExecuteAction(item);
             }
 
-
             MonitorEvents.MonitorSpeechEnd speechWordEvent = JsonConvert.DeserializeObject<MonitorEvents.MonitorSpeechEnd>(ev);
             SpeechEndInternal();
 
@@ -362,6 +377,9 @@ namespace TCPFurhatComm
                     var gazeValues = item.Item3.Split(',');
                     Gaze(float.Parse(gazeValues[0], culture), float.Parse(gazeValues[1], culture), float.Parse(gazeValues[2], culture));
                     break;
+                case "event":
+                    CustomEvent?.Invoke(item.Item3);
+                    break;
             }
         }
 
@@ -369,36 +387,42 @@ namespace TCPFurhatComm
 
         #region Speech
 
-        /// <summary>
-        /// You can create a strign list to be played in sequence 
-        /// </summary>
-        /// <param name="values"> List of strings that will be played in sequence </param>
-        public void Say(List<string> values)
+        internal void sayDialogAct(string dialogAct, Dictionary<string, string> keyValuePairs = null)
         {
-            foreach (var item in values)
+            Behavior behaviorToSay = dialogActs?.getRandomBehavior(dialogAct);
+
+            if (behaviorToSay == null)
+                return;
+
+            KeyFramedGesture mood = null;
+            if(GESTURES.customGestures.ContainsKey(behaviorToSay.emotion))
             {
-                Say(item);
+                mood = GESTURES.customGestures[behaviorToSay.emotion];
             }
+
+            Say(behaviorToSay.text, mood, keyValuePairs);
+
+            if (behaviorToSay.customEvent != "")
+                CustomEvent?.Invoke(behaviorToSay.customEvent);
         }
 
         /// <summary>
         /// Internal say function to make the robot actually say something (not to be accessed by DLL users)
         /// </summary>
         /// <param name="text"> Text to be said </param>
-        /// <param name="wordEventTriggering"> If this is set to true it will trigger monitor.speech.word events</param>
-        private void Say(string text, bool wordEventTriggering)
+        private void Say(string text)
         {
             inMiddleOfSpeaking = true;
-            SendEvent(new ActionEvents.Speak(text, wordEventTriggering));
+            SendEvent(new ActionEvents.Speak(text, true));
         }
 
         /// <summary>
         ///Sends a text speech event to the synthesizer and adds an utterance to the speech queue
         /// </summary>
-        public void Say(string text, KeyFramedGesture mood = null)
+        public void Say(string text, KeyFramedGesture mood = null, Dictionary<string,string> keyValuePairs = null)
         {
             if (inMiddleOfSpeaking)
-                SayQueue.Enqueue(new Tuple<string, KeyFramedGesture>(text, mood));
+                SayQueue.Enqueue(new Tuple<string, KeyFramedGesture, Dictionary<string, string>>(text, mood, keyValuePairs));
             else
             {
                 if (mood != null)
@@ -413,24 +437,75 @@ namespace TCPFurhatComm
 
                 if (midTextActions.Count() > 1)
                 {
+                    if(keyValuePairs != null)
+                        text = replaceVariables(text, keyValuePairs);
                     FillMidTextActions(text);
                     text = Regex.Replace(text, @"\|.*?\|", String.Empty);
-                    Say(text, true);
+                    Say(text);
                 }
                 else
                 {
-                    Say(text, true);
+                    Say(text);
                 }
             }
+        }
+
+        private string replaceVariables(string text, Dictionary<string, string> keyValuePairs)
+        {
+            int startingCharacter = -1;
+            bool insideAction = false;
+            bool insideArgument = false;
+            StringBuilder action = new StringBuilder("");
+            StringBuilder argument = new StringBuilder("");
+            List<string> replaceStrings = new List<string>();
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (text[i] == '|')
+                {
+                    //End of action | detected 
+                    if (insideAction)
+                    {
+                        if (action.ToString() == "var")
+                            if (keyValuePairs.ContainsKey(argument.ToString()))
+                                replaceStrings.Add(argument.ToString());
+                        action.Clear();
+                        argument.Clear();
+                    }
+                    else
+                    {
+                        startingCharacter = i;
+                    }
+                    insideAction = !insideAction;
+                }
+                else
+                {
+                    if (insideAction)
+                    {
+                        if (text[i] == '(')
+                            insideArgument = true;
+                        else if (text[i] == ')')
+                            insideArgument = false;
+                        else if (insideArgument)
+                            argument.Append(text[i]);
+                        else action.Append(text[i]);
+                    }
+                }
+            }
+
+            foreach (var item in replaceStrings)
+            {
+                text = text.Replace("|var(" + item + ")|", keyValuePairs[item]);
+            }
+            return text;
         }
 
         /// <summary>
         ///Sends a text speech event to the synthesizer, adds an utterance to the speech queue and blocks the current thread until the speech is over
         /// </summary>
         /// <param name="text"> The text to speak </param>
-        public void SayBlock(string toSay)
+        public void SayBlock(string toSay, KeyFramedGesture mood = null, Dictionary<string, string> keyValuePairs = null)
         {
-            Say(toSay);
+            Say(toSay, mood, keyValuePairs);
 
             while (inMiddleOfSpeaking)
             {
@@ -583,7 +658,7 @@ namespace TCPFurhatComm
         /// Makes the agent shift gaze to a certain location in 3D space
         /// </summary>
         /// <param name="location"> The 3D location where the agent should gaze </param>
-        public void Gaze(Location location)
+        public void Gaze(Vector3Simple location)
         {
             if (rollEnabled)
                 SendEvent(new ActionEvents.PerformGazeWithRoll(location, gazeMode, gazeSpeed, gazeRoll));
@@ -601,7 +676,7 @@ namespace TCPFurhatComm
         /// <param name="z"> z position </param>
         public void Gaze(double x, double y, double z)
         {
-            Gaze(new Location(x, y, z));
+            Gaze(new Vector3Simple(x, y, z));
         }
 
         public void Attend(string name, int mode = 0, int speed = 2, double roll = 0)
