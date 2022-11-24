@@ -9,7 +9,7 @@ namespace TCPFurhatComm
         public static void Main(String[] args)
         {
             //CONNECT TO FURHAT USING THE ROBOT'S IP PORT
-            FurhatInterface furhat = new FurhatInterface("130.237.67.215", nameForSkill: "CSharp Example", filePathDialogActs: "../DialogActs.tsv");
+            FurhatInterface furhat = new FurhatInterface("localhost", nameForSkill: "CSharp Example", filePathDialogActs: "../DialogActs.tsv");
 
             //CREATE A KEYVALUEPAIR DICTIONARY TO BE ABLE TO DO VARIABLE REPLACEMENT IN SAY COMMANDS
             Dictionary<string, string> vars = new Dictionary<string, string>() {
@@ -59,8 +59,8 @@ namespace TCPFurhatComm
 
             //FACE TEXTURE DEMONSTRATION
             Console.WriteLine("Face Texture Demonstration.\n[Press Enter To Continue]");
-            furhat.FaceTexture(FACETEXTURES.IROBOT);
-            furhat.Say($"I can look less like a person, |facetexture(avatar)| like a creature  or more like a {InText.FaceTexture(FACETEXTURES.MALE)} human ");
+            furhat.FaceTexture(FACETEXTURES.TITAN);
+            furhat.Say($"I can look less like a person, |facetexture(titan)| like a creature  or more like a {InText.FaceTexture(FACETEXTURES.ALEX)} human ");
             Console.ReadLine();
             Console.Clear();
 
@@ -69,8 +69,8 @@ namespace TCPFurhatComm
             furhat.ChangeVoice(VOICES.SV_SE_AMAZON_ASTRID);
             Thread.Sleep(750);
             furhat.Say("Jag kan pratar Svenska.");
-            furhat.ChangeVoice(VOICES.EN_GB_CEREPROC_WILLIAM);
-            furhat.Say(" Or I can return to my native language.");
+            furhat.ChangeVoice(VOICES.ES_US_AMAZON_PEDRO);
+            furhat.Say("Or I can become bilinguan and hablar mucho espanol in the middle of an English sentence.");
             Console.ReadLine();
             Console.Clear();
 
@@ -106,7 +106,7 @@ namespace TCPFurhatComm
 
             //Dialog Acts From Files
             Console.WriteLine("Dialog Act Demonstration\n[Press Enter To Continue]");
-            furhat.CustomEvent = new Action<string>((s) => HandleCustomEvents(furhat,s));
+            furhat.CustomEvent = new Action<string>((s) => HandleCustomEvents(furhat, s));
             furhat.Say("let me tell you 3 jokes.");
             for (int i = 0; i < 3; i++)
             {
@@ -136,7 +136,7 @@ namespace TCPFurhatComm
                     break;
             }
             Console.WriteLine("Custom event triggered: " + str);
-            
+
         }
 
         private static void printUsers(List<User> users)

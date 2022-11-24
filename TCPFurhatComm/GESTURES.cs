@@ -80,31 +80,25 @@ namespace TCPFurhatComm
         /// </summary>
         public const string Identifier = "gesture";
 
+        public static string SMILE_BIG = "BigSmile";
         public static string EYES_BLINK = "Blink";
+        public static string BROW_FROWN = "BrowFrown";
+        public static string BROW_RAISE = "BrowRaise";
         public static string EYES_CLOSE = "CloseEyes";
-        public static string EYES_OPEN = "OpenEyes";
-        public static string EYES_WINK = "Wink";
+        public static string ANGER = "ExpressAnger";
+        public static string DISGUST = "ExpressDisgust";
+        public static string FEAR = "ExpressFear";
+        public static string SAD = "ExpressSad";
         public static string EYES_LOOKAWAY = "GazeAway";
-
         public static string NECK_NOD = "Nod";
+        public static string OH = "Oh";
+        public static string EYES_OPEN = "OpenEyes";
         public static string NECK_ROLL = "Roll";
         public static string NECK_SHAKE = "Shake";
-
-        public static string OH = "Oh";
-
-        public static string SMILE_BIG = "BigSmile";
         public static string SMILE = "Smile";
-
-        public static string BROW_RAISE = "BrowRaise";
-        public static string BROW_FROWN = "BrowFrown";
-
-        public static string ANGER = "Anger";
-        public static string DISGUST = "Disgust";
-        public static string FEAR = "Fear";
-        public static string SAD = "Sad";
         public static string SURPRISE = "Surprise";
         public static string THOUGHTFUL = "Thoughtful";
-
+        public static string EYES_WINK = "Wink";
 
         public static KeyFramedGesture STARSTRUCK = new KeyFramedGesture(
         name: "Starstruck",
@@ -121,7 +115,7 @@ namespace TCPFurhatComm
 
         public static KeyFramedGesture SHY = new KeyFramedGesture(
         name: "Shy",
-        keyFrameTimes: new List<float> { 0.32f, 0.64f, 0.84f, 0.96f, 1.16f, 1.28f},
+        keyFrameTimes: new List<float> { 0.32f, 0.64f, 0.84f, 0.96f, 1.16f, 1.28f },
         keyFrameParams: new List<keyFramedPARAM> {
                     new keyFramedPARAM(PARAMS.NECK_TILT, new List<float> { 20,10,10,5,5,0}),
                     new keyFramedPARAM(PARAMS.SMILE_CLOSED, new List<float> { 0f,0f,0f,0.4f,0.4f,0}),
@@ -134,7 +128,7 @@ namespace TCPFurhatComm
 
         public static KeyFramedGesture BIGWINK = new KeyFramedGesture(
         name: "BigWink",
-        keyFrameTimes: new List<float> { 0.32f, 0.64f},
+        keyFrameTimes: new List<float> { 0.32f, 0.64f },
         keyFrameParams: new List<keyFramedPARAM> {
                     new keyFramedPARAM(PARAMS.EPICANTHIC_FOLD, new List<float> { 0.3f,0}),
                     new keyFramedPARAM(PARAMS.EYE_SQUINT_LEFT, new List<float> { 3,0}),
@@ -144,7 +138,7 @@ namespace TCPFurhatComm
 
         public static KeyFramedGesture FLIRTY = new KeyFramedGesture(
         name: "Flirty",
-        keyFrameTimes: new List<float> { 0.32f, 0.64f},
+        keyFrameTimes: new List<float> { 0.32f, 0.64f },
         keyFrameParams: new List<keyFramedPARAM> {
                     new keyFramedPARAM(PARAMS.NECK_TILT, new List<float> { -3f,0}),
                     new keyFramedPARAM(PARAMS.PHONE_W, new List<float> { 0.4f,0}),
@@ -166,7 +160,7 @@ namespace TCPFurhatComm
 
         public static KeyFramedGesture EMBARRASSED = new KeyFramedGesture(
         name: "Embarrassed",
-        keyFrameTimes: new List<float> { 0.32f, 1.22f, 1.54f},
+        keyFrameTimes: new List<float> { 0.32f, 1.22f, 1.54f },
         keyFrameParams: new List<keyFramedPARAM> {
                     new keyFramedPARAM(PARAMS.SMILE_CLOSED, new List<float> { 0.55f,0.55f,0}),
                     new keyFramedPARAM(PARAMS.EXPR_DISGUST, new List<float> { 0.45f,0.45f,0f}),

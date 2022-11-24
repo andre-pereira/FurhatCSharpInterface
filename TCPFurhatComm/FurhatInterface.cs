@@ -56,15 +56,15 @@ namespace TCPFurhatComm
         /// Item2 (string) contains the name of the action that should be performed
         /// Item3 (string) contains the argument associate with that action
         /// </summary>
-        private List<Tuple<int,string,string>> MidTextActions;
+        private List<Tuple<int, string, string>> MidTextActions;
 
         /// <summary>
         /// This variable holds a queue of speech that is enqued in the speech.end event
         /// </summary>
-        private Queue<Tuple<string,KeyFramedGesture, Dictionary<string, string>>> SayQueue;
+        private Queue<Tuple<string, KeyFramedGesture, Dictionary<string, string>>> SayQueue;
 
 
-        private bool gazeDeactivated;
+        private bool gazeTrackingDeactivated;
 
         /// <summary>
         /// Variable is true whenever furhat is in the middle of speaking
@@ -80,7 +80,7 @@ namespace TCPFurhatComm
 
         private int gazeSpeed = 2;
 
-        private float gazeRoll = 0;
+        private int gazeRoll = 0;
 
         private bool rollEnabled = false;
 
@@ -96,8 +96,6 @@ namespace TCPFurhatComm
         public List<User> users { get; private set; }
 
         private DialogActs dialogActs;
-
-        
 
         #endregion
 
@@ -148,9 +146,9 @@ namespace TCPFurhatComm
             currentWord = -1;
 
             inMiddleOfSpeaking = false;
-            SayQueue = new Queue<Tuple<string, KeyFramedGesture, Dictionary<string,string>>>();
+            SayQueue = new Queue<Tuple<string, KeyFramedGesture, Dictionary<string, string>>>();
 
-            gazeDeactivated = false;
+            gazeTrackingDeactivated = false;
             SubscribedEvents = new Dictionary<string, Action<string>>();
             MidTextActions = new List<Tuple<int, string, string>>();
             client = new Client(ipAddress, port);
@@ -162,10 +160,9 @@ namespace TCPFurhatComm
             SubscribeToEvent(EVENTNAME.SENSE.SPEECH, new Action<string>(SpeechSensedEvent));
             SubscribeToEvent(EVENTNAME.SENSE.USERS, new Action<string>(UsersSensedEvent));
 
-            if(nameForSkill != null)
+            if (nameForSkill != null)
                 ConnectSkill(nameForSkill);
         }
-
 
 
         /// <summary>
@@ -272,13 +269,13 @@ namespace TCPFurhatComm
                     u.rotation = new Vector3Simple(rot.Value<float>("x"), rot.Value<float>("y"), rot.Value<float>("z"));
                     users.Add(u);
                 }
-                if(users.Count > 0)
+                if (users.Count > 0)
                     this.users = users;
                 SensedUsersAction?.Invoke(users);
             }
             catch (Exception)
             {
-                
+
             }
 
         }
@@ -352,7 +349,7 @@ namespace TCPFurhatComm
                 CurrentMood = null;
             }
             EndSpeechAction?.Invoke();
-            gazeDeactivated = false;
+            gazeTrackingDeactivated = false;
             currentWord = -1;
         }
 
@@ -382,8 +379,9 @@ namespace TCPFurhatComm
                     break;
                 case "gaze":
                     var gazeValues = item.Item3.Split(',');
+                    gazeTrackingDeactivated = false;
                     Gaze(float.Parse(gazeValues[0], culture), float.Parse(gazeValues[1], culture), float.Parse(gazeValues[2], culture));
-                    gazeDeactivated = true;
+                    gazeTrackingDeactivated = true;
                     break;
                 case "event":
                     CustomEvent?.Invoke(item.Item3);
@@ -403,7 +401,7 @@ namespace TCPFurhatComm
                 return;
 
             KeyFramedGesture mood = null;
-            if(GESTURES.customGestures.ContainsKey(behaviorToSay.emotion))
+            if (GESTURES.customGestures.ContainsKey(behaviorToSay.emotion))
             {
                 mood = GESTURES.customGestures[behaviorToSay.emotion];
             }
@@ -427,7 +425,7 @@ namespace TCPFurhatComm
         /// <summary>
         ///Sends a text speech event to the synthesizer and adds an utterance to the speech queue
         /// </summary>
-        public void Say(string text, KeyFramedGesture mood = null, Dictionary<string,string> keyValuePairs = null)
+        public void Say(string text, KeyFramedGesture mood = null, Dictionary<string, string> keyValuePairs = null)
         {
             if (inMiddleOfSpeaking)
             {
@@ -633,7 +631,7 @@ namespace TCPFurhatComm
         /// Sets the global gaze roll of the robot and automatically enables roll on gaze commands. You can disable it again using the EnableRoll function.
         /// </summary>
         /// <param name="gazeRoll"> the roll value in degrees</param>
-        public void SetGazeRoll(float gazeRoll)
+        public void SetGazeRoll(int gazeRoll)
         {
             rollEnabled = true;
             this.gazeRoll = gazeRoll;
@@ -672,7 +670,7 @@ namespace TCPFurhatComm
         /// <param name="location"> The 3D location where the agent should gaze </param>
         public void Gaze(Vector3Simple location)
         {
-            if (gazeDeactivated)
+            if (gazeTrackingDeactivated)
                 return;
 
             if (rollEnabled)
@@ -699,7 +697,7 @@ namespace TCPFurhatComm
         /// </summary>
         internal void Attend(string name, int mode = 0, int speed = 2, double roll = 0)
         {
-            if(rollEnabled)
+            if (rollEnabled)
                 SendEvent(new ActionEvents.AttendWithRoll(name, mode, speed, roll));
             else
                 SendEvent(new ActionEvents.Attend(name, mode, speed));
@@ -738,8 +736,8 @@ namespace TCPFurhatComm
         public void ChangeParameter(PARAMS parameter, float duration, float intensity, int priority = 0)
         {
             // Duration and priority will be set to one
-            KeyFramedGesture changeParam = new KeyFramedGesture("Change " + parameter.ToString(), new List<float> { 1 }, 
-                new List<keyFramedPARAM> {new keyFramedPARAM(parameter, new List<float>{1})});
+            KeyFramedGesture changeParam = new KeyFramedGesture("Change " + parameter.ToString(), new List<float> { 1 },
+                new List<keyFramedPARAM> { new keyFramedPARAM(parameter, new List<float> { 1 }) });
 
             //Call the gesture with the right duration and intensity
             Gesture(changeParam, priority, duration, intensity);
@@ -802,7 +800,7 @@ namespace TCPFurhatComm
         /// <param name="name"> The name of the texture </param>
         public void ChangeLed(int red, int green, int blue)
         {
-            SendEvent(new ActionEvents.ChangeLedSolidColor(red,green,blue));
+            SendEvent(new ActionEvents.ChangeLedSolidColor(red, green, blue));
         }
 
     }
@@ -841,7 +839,7 @@ namespace TCPFurhatComm
         /// <returns></returns>
         public static string Gaze(float x, float y, float z)
         {
-            return "|gaze" +"("+ x.ToString(FurhatInterface.culture) + ',' + y.ToString(FurhatInterface.culture) + ',' + z.ToString(FurhatInterface.culture) +")|";
+            return "|gaze" + "(" + x.ToString(FurhatInterface.culture) + ',' + y.ToString(FurhatInterface.culture) + ',' + z.ToString(FurhatInterface.culture) + ")|";
         }
 
         public static string Led(int red, int green, int blue)

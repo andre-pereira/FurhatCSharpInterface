@@ -10,7 +10,7 @@ namespace TCPFurhatComm
         /// The name of the event (such as "action.speech")
         /// </summary>
         public string event_name { get; set; }
-        
+
         /// <summary>
         /// A unique ID for the event
         /// </summary>
@@ -31,7 +31,7 @@ namespace TCPFurhatComm
             this.event_name = event_name;
             this.event_id = GeneralEvent.eventCount++.ToString();
             //this.event_sender = "DotNet";
-            this.event_time = new DateTime().ToString("yyyy-MM-dd HH:mm:ss:fff");
+            this.event_time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             new Vector3Simple(1.0, 1.0, 1.0);
         }
     }

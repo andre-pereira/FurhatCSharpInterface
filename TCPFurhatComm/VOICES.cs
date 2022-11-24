@@ -72,7 +72,6 @@ namespace TCPFurhatComm
         public static string DA_DK_AMAZON_MADS = "Mads (da-DK) - Amazon Polly";
         public static string CY_GB_AMAZON_GWYNETH = "Gwyneth (cy-GB) - Amazon Polly";
         public static string ZH_CN_AMAZON_ZHIYU = "Zhiyu (zh-CN) - Amazon Polly";
-
-
+        public static string ES_US_AMAZON_PEDRO = "Pedro-Neural (es-US) - Amazon Polly";
     }
 }
