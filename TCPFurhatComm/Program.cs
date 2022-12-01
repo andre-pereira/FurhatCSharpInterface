@@ -69,8 +69,8 @@ namespace TCPFurhatComm
             furhat.ChangeVoice(VOICES.SV_SE_AMAZON_ASTRID);
             Thread.Sleep(750);
             furhat.Say("Jag kan pratar Svenska.");
-            furhat.ChangeVoice(VOICES.ES_US_AMAZON_PEDRO);
-            furhat.Say("Or I can become bilinguan and hablar mucho espanol in the middle of an English sentence.");
+            furhat.ChangeVoice(VOICES.EN_US_AMAZON_JOEY);
+            furhat.Say("Or I can return to my English voice.");
             Console.ReadLine();
             Console.Clear();
 
@@ -89,7 +89,7 @@ namespace TCPFurhatComm
 
             //SPEECH RECOGNITION DEMONSTRATION
             Console.Write("Speech Recognition Demonstration.\n[Press Enter To Continue]");
-            furhat.SayBlock("I can recognize and reapeat what you say"); //Say block must be used so that listen is executed synchrounously
+            furhat.SayBlock("I can recognize and repeat what you say"); //Say block must be used so that listen is executed synchrounously
             furhat.StartListening(withPartialResults: true);
             furhat.RecognizedPartialSpeechAction = new Action<string>((s) => Console.WriteLine("Recognized Partial String: " + s));
             furhat.RecognizedSpeechAction = new Action<string>((s) => furhat.Say(s));

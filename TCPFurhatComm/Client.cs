@@ -29,8 +29,8 @@ namespace TCPFurhatComm
 
         public void Close()
         {
+            //listenThread.Abort();
             socket.Close();
-            listenThread.Abort();
         }
 
         /// <summary>
@@ -39,9 +39,17 @@ namespace TCPFurhatComm
         /// <param name="msg"> message to send in string format </param>
         public void Send(string msg)
         {
-            NetworkStream netStream = socket.GetStream();
-            Byte[] sendBytes = Encoding.ASCII.GetBytes(msg);
-            netStream.Write(sendBytes, 0, sendBytes.Length);
+            try
+            {
+                NetworkStream netStream = socket.GetStream();
+                Byte[] sendBytes = Encoding.ASCII.GetBytes(msg);
+                netStream.Write(sendBytes, 0, sendBytes.Length);
+            }
+            catch (Exception e)
+            {
+                //Console.WriteLine(e.ToString());
+            }
+
         }
 
         private void ReadThread()
@@ -58,7 +66,15 @@ namespace TCPFurhatComm
 
                 // Read can return anything from 0 to numBytesToRead.  
                 // This method blocks until at least one byte is read.
-                int bytesRead = netStream.Read(bytes, 0, (int)socket.ReceiveBufferSize);
+                int bytesRead = 0;
+                try
+                {
+                    bytesRead = netStream.Read(bytes, 0, (int)socket.ReceiveBufferSize);
+                }
+                catch (Exception e)
+                {
+                    //Console.WriteLine(e.ToString());
+                }
                 //
                 //appends to our string builder and clears all \n characters as it makes it easier to parse
                 sb.Append((Encoding.ASCII.GetString(bytes, 0, bytesRead)).Replace("\n", string.Empty));
@@ -118,7 +134,7 @@ namespace TCPFurhatComm
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
+                //Console.WriteLine(e.ToString());
             }
         }
 
