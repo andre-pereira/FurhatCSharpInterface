@@ -733,17 +733,34 @@ namespace TCPFurhatComm
             GestureCustom(gesture, priority, duration, intensity);
         }
 
-        public void ChangeParameter(PARAMS parameter, float duration, float intensity, int priority = 0)
+        public void ChangeParameter(CHARPARAMS parameter, float duration, float intensity, int priority = 0)
         {
             // Duration and priority will be set to one
-            KeyFramedGesture changeParam = new KeyFramedGesture("Change " + parameter.ToString(), new List<float> { 1 },
+            KeyFramedGesture changeParam = new KeyFramedGesture("Change " + parameter, new List<float> { 1 },
+                new List<keyFramedPARAM> { new keyFramedPARAM(parameter, new List<float> { 1 }) });
+
+            //Call the gesture with the right duration and intensity
+            Gesture(changeParam, priority, duration, intensity);
+        }
+        public void ChangeParameter(ARKITPARAMS parameter, float duration, float intensity, int priority = 0)
+        {
+            // Duration and priority will be set to one
+            KeyFramedGesture changeParam = new KeyFramedGesture("Change " + parameter, new List<float> { 1 },
                 new List<keyFramedPARAM> { new keyFramedPARAM(parameter, new List<float> { 1 }) });
 
             //Call the gesture with the right duration and intensity
             Gesture(changeParam, priority, duration, intensity);
         }
 
+        public void ChangeParameter(BASICPARAMS parameter, float duration, float intensity, int priority = 0)
+        {
+            // Duration and priority will be set to one
+            KeyFramedGesture changeParam = new KeyFramedGesture("Change " + parameter, new List<float> { 1 },
+                new List<keyFramedPARAM> { new keyFramedPARAM(parameter, new List<float> { 1 }) });
 
+            //Call the gesture with the right duration and intensity
+            Gesture(changeParam, priority, duration, intensity);
+        }
 
         internal void GestureCustom(Gesture gesture, int priority = 0)
         {
@@ -770,7 +787,7 @@ namespace TCPFurhatComm
                         if (kfParam.keyFrameValues[i - 1] == kfParam.keyFrameValues[i])
                             continue;
                     }
-                    parameters.Add(kfParam.param.ToString(), kfParam.keyFrameValues[i] * intensity);
+                    parameters.Add(kfParam.param, kfParam.keyFrameValues[i] * intensity);
                 }
 
                 frames.Add(new Frame(true, new List<float> { gesture.keyFrameTimes[i] * duration }, parameters));
