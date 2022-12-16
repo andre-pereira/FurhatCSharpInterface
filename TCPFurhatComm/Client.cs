@@ -29,8 +29,8 @@ namespace TCPFurhatComm
 
         public void Close()
         {
-            //listenThread.Abort();
             socket.Close();
+            listenThread.Abort();
         }
 
         /// <summary>

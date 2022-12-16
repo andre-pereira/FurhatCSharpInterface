@@ -35,7 +35,7 @@ namespace TCPFurhatComm
         MOUTH_STRETCH_RIGHT, MOUTH_UPPER_UP_LEFT, MOUTH_UPPER_UP_RIGHT,
 
         CHEEK_PUFF, CHEEK_SQUINT_LEFT, CHEEK_SQUINT_RIGHT, JAW_FORWARD, JAW_LEFT, JAW_OPEN, JAW_RIGHT,
-        NOSE_SNEER_LEFT, NOSE_SNEER_RIGHT
+        NOSE_SNEER_LEFT, NOSE_SNEER_RIGHT, UNDEFINED
     }
 
     public enum CHARPARAMS
@@ -507,6 +507,7 @@ namespace TCPFurhatComm
                     new keyFramedPARAM(BASICPARAMS.EYE_SQUINT_RIGHT, new List<float> {0.6f}),
                     new keyFramedPARAM(BASICPARAMS.SMILE_OPEN, new List<float> {0f})
         });
+
 
         internal static Dictionary<string, KeyFramedGesture> customGestures = new Dictionary<string, KeyFramedGesture>() {
             { STARSTRUCK.name, STARSTRUCK },
