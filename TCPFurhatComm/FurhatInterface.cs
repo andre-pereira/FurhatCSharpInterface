@@ -61,7 +61,7 @@ namespace TCPFurhatComm
         /// <summary>
         /// This variable holds a queue of speech that is enqued in the speech.end event
         /// </summary>
-        private Queue<Tuple<string, KeyFramedGesture, Dictionary<string, string>>> SayQueue;
+        private Queue<Tuple<string, KeyFramedGesture, Dictionary<string, string>,bool>> SayQueue;
 
 
         private bool gazeTrackingDeactivated;
@@ -146,7 +146,7 @@ namespace TCPFurhatComm
             currentWord = -1;
 
             inMiddleOfSpeaking = false;
-            SayQueue = new Queue<Tuple<string, KeyFramedGesture, Dictionary<string, string>>>();
+            SayQueue = new Queue<Tuple<string, KeyFramedGesture, Dictionary<string, string>, bool>>();
 
             gazeTrackingDeactivated = false;
             SubscribedEvents = new Dictionary<string, Action<string>>();
@@ -419,7 +419,7 @@ namespace TCPFurhatComm
         private void Say(string text)
         {
             inMiddleOfSpeaking = true;
-            SendEvent(new ActionEvents.Speak(text, true,false));
+            SendEvent(new ActionEvents.Speak(text, true, false));
         }
 
         /// <summary>
@@ -437,9 +437,9 @@ namespace TCPFurhatComm
         /// </summary>
         public void Say(string text, KeyFramedGesture mood = null, Dictionary<string, string> keyValuePairs = null, bool abort = false)
         {
-            if (inMiddleOfSpeaking)
+            if (inMiddleOfSpeaking && !abort)
             {
-                SayQueue.Enqueue(new Tuple<string, KeyFramedGesture, Dictionary<string, string>>(text, mood, keyValuePairs));
+                SayQueue.Enqueue(new Tuple<string, KeyFramedGesture, Dictionary<string, string>, bool>(text, mood, keyValuePairs,abort));
             }
             else
             {
