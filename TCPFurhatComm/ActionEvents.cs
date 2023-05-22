@@ -16,12 +16,14 @@ namespace TCPFurhatComm
         {
             public string text { get; set; }
             public bool monitorWords { get; set; }
+            public bool abort { get; set; }
             /// <param name="text"> The text to speak </param>
             /// <param name="monitorWords"> Set as true if you want to receive monitor.speech.word events </param>
-            public Speak(string text, bool monitorWords) : base(EVENTNAME.ACTION.SPEECH)
+            public Speak(string text, bool monitorWords, bool abort) : base(EVENTNAME.ACTION.SPEECH)
             {
                 this.text = text;
                 this.monitorWords = monitorWords;
+                this.abort = abort;
             }
         }
 

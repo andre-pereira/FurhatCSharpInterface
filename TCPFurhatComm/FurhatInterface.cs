@@ -419,13 +419,23 @@ namespace TCPFurhatComm
         private void Say(string text)
         {
             inMiddleOfSpeaking = true;
-            SendEvent(new ActionEvents.Speak(text, true));
+            SendEvent(new ActionEvents.Speak(text, true,false));
+        }
+
+        /// <summary>
+        /// Internal say function to make the robot actually say something (not to be accessed by DLL users)
+        /// </summary>
+        /// <param name="text"> Text to be said </param>
+        private void Say(string text, bool abort)
+        {
+            inMiddleOfSpeaking = true;
+            SendEvent(new ActionEvents.Speak(text, true, abort));
         }
 
         /// <summary>
         ///Sends a text speech event to the synthesizer and adds an utterance to the speech queue
         /// </summary>
-        public void Say(string text, KeyFramedGesture mood = null, Dictionary<string, string> keyValuePairs = null)
+        public void Say(string text, KeyFramedGesture mood = null, Dictionary<string, string> keyValuePairs = null, bool abort = false)
         {
             if (inMiddleOfSpeaking)
             {
@@ -449,12 +459,12 @@ namespace TCPFurhatComm
                         text = replaceVariables(text, keyValuePairs);
                     FillMidTextActions(text);
                     text = Regex.Replace(text, @"\|.*?\|", String.Empty);
-                    Say(text);
+                    Say(text, abort);
                     SentSayEvent?.Invoke(text);
                 }
                 else
                 {
-                    Say(text);
+                    Say(text, abort);
                     SentSayEvent?.Invoke(text);
                 }
             }
