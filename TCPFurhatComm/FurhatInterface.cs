@@ -806,91 +806,36 @@ namespace TCPFurhatComm
             return transformedGesture;
         }
 
-        public void ChangeParameterFromOVR(bool currentlyInLipSync, int code, float duration, float intensity, int priority = 0)
+        public void ChangeParameters(List<BASICPARAMS> parameters, List<float> intensities, float duration, int priority = 0)
         {
-            switch (code)
+            List<keyFramedPARAM> keyParamList = new List<keyFramedPARAM>();
+            for (int i = 0; i < parameters.Count; i++)
             {
-                case -1: break;
-                case 0: ChangeParameter(BASICPARAMS.BROW_DOWN_LEFT, duration, intensity, priority); break; //Brow_Lowerer_L
-                case 1: ChangeParameter(BASICPARAMS.BROW_DOWN_RIGHT, duration, intensity, priority); break; //Brow_Lowerer_R
-
-                case 2: ChangeParameter(ARKITPARAMS.CHEEK_PUFF, duration, intensity, priority); break; //Cheek_Puff_L
-                case 3: break;//Cheek_Puff_R
-
-                case 4: ChangeParameter(ARKITPARAMS.CHEEK_SQUINT_LEFT, duration, intensity, priority); break; //Cheek_Raiser_L
-                case 5: ChangeParameter(ARKITPARAMS.CHEEK_SQUINT_RIGHT, duration, intensity, priority); break; //Cheek_Raiser_R
-
-                case 6: ChangeParameter(CHARPARAMS.CHEEK_THINNER, duration, intensity, priority); break; //Cheek_Suck_L
-                case 7: break;//Cheek_Suck_R
-
-                case 8: if(!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_SHRUG_LOWER, duration, intensity, priority); break; //Chin_Raiser_B
-                case 9: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_SHRUG_UPPER, duration, intensity, priority); break; //Chin_Raiser_T
-                case 10: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_DIMPLE_LEFT, duration, intensity, priority); break; //Dimpler_L
-                case 11: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_DIMPLE_RIGHT, duration, intensity, priority); break;//Dimpler_R
-                case 12: ChangeParameter(ARKITPARAMS.EYE_BLINK_LEFT, duration, intensity, priority); break; //Eyes_Closed_L
-                case 13: ChangeParameter(ARKITPARAMS.EYE_BLINK_RIGHT, duration, intensity, priority); break; //Eyes_Closed_R
-                case 14: ChangeParameter(ARKITPARAMS.EYE_LOOK_DOWN_LEFT, duration, intensity, priority); break; //Eyes_Look_Down_L
-                case 15: ChangeParameter(ARKITPARAMS.EYE_LOOK_DOWN_RIGHT, duration, intensity, priority); break; //Eyes_Look_Down_R
-                case 16: ChangeParameter(ARKITPARAMS.EYE_LOOK_OUT_LEFT, duration, intensity, priority); break; //Eyes_Look_Left_L
-                case 17: ChangeParameter(ARKITPARAMS.EYE_LOOK_IN_RIGHT, duration, intensity, priority); break; //Eyes_Look_Left_R
-                case 18: ChangeParameter(ARKITPARAMS.EYE_LOOK_IN_LEFT, duration, intensity, priority); break; //Eyes_Look_Right_L
-                case 19: ChangeParameter(ARKITPARAMS.EYE_LOOK_OUT_RIGHT, duration, intensity, priority); break; //Eyes_Look_Right_R
-                case 20: ChangeParameter(ARKITPARAMS.EYE_LOOK_UP_LEFT, duration, intensity, priority); break; //Eyes_Look_Up_L
-                case 21: ChangeParameter(ARKITPARAMS.EYE_LOOK_UP_RIGHT, duration, intensity, priority); break; //Eyes_Look_Up_R
-
-                case 22: ChangeParameter(ARKITPARAMS.BROW_INNER_UP, duration, intensity, priority); break; //Inner_Brow_Raiser_L
-                case 23: break;//Inner_Brow_Raiser_R
-
-                case 24: ChangeParameter(ARKITPARAMS.JAW_OPEN, duration, intensity, priority); break; //Jaw_Drop
-                case 25: ChangeParameter(ARKITPARAMS.JAW_LEFT, duration, intensity, priority); break; //Jaw_Sideways_Left
-                case 26: ChangeParameter(ARKITPARAMS.JAW_RIGHT, duration, intensity, priority); break; //Jaw_Sideways_Right
-                case 27: ChangeParameter(ARKITPARAMS.JAW_FORWARD, duration, intensity, priority); break; //Jaw_Thrust
-                case 28: ChangeParameter(ARKITPARAMS.EYE_SQUINT_LEFT, duration, intensity, priority); break; //Lid_Tightener_L
-                case 29: ChangeParameter(ARKITPARAMS.EYE_SQUINT_RIGHT, duration, intensity, priority); break; //Lid_Tightener_R
-                case 30: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_FROWN_LEFT, duration, intensity, priority); break; //Lip_Corner_Depressor_L
-                case 31: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_FROWN_RIGHT, duration, intensity, priority); break; //Lip_Corner_Depressor_R
-                case 32: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_SMILE_LEFT, duration, intensity, priority); break; //Lip_Corner_Puller_L
-                case 33: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_SMILE_RIGHT, duration, intensity, priority); break; //Lip_Corner_Puller_R
-
-                //Repeated from (38,39), (48,49) and 51, 52
-                case 34: break; //Lip_Funneler_LB
-                case 35: break;//Lip_Funneler_LT
-                case 36: break; //Lip_Funneler_RB
-                case 37: break;//Lip_Funneler_RT
-
-                case 38: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_PRESS_LEFT, duration, intensity, priority); break; //Lip_Pressor_L
-                case 39: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_PRESS_RIGHT, duration, intensity, priority); break; //Lip_Pressor_R
-
-                case 40: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_PUCKER, duration, intensity, priority); break;//Lip_Pucker_L
-                case 41: break; ;//Lip_Pucker_R
-
-                case 42: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_STRETCH_LEFT, duration, intensity, priority); break;//Lip_Stretcher_L
-                case 43: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_STRETCH_RIGHT, duration, intensity, priority); break;//Lip_Stretcher_R
-
-                case 44: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_ROLL_LOWER, duration, intensity, priority); break;//Lip_Suck_LB
-                case 45: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_ROLL_UPPER, duration, intensity, priority); break;//Lip_Suck_LT
-                case 46: break; //Lip_Suck_RB
-                case 47: break;  //Lip_Suck_RT
-
-                case 48: break; //Lip_Tightener_L
-                case 49: break; //Lip_Tightener_R
-
-                case 50: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_CLOSE, duration, intensity, priority); break;//Lips_Toward
-                case 51: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_LOWER_DOWN_LEFT, duration, intensity, priority); break;//Lower_Lip_Depressor_L
-                case 52: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_LOWER_DOWN_RIGHT, duration, intensity, priority); break;//Lower_Lip_Depressor_R
-                case 53: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_LEFT, duration, intensity, priority); break;//Mouth_Left
-                case 54: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_RIGHT, duration, intensity, priority); break;//Mouth_Right
-                case 55: ChangeParameter(ARKITPARAMS.NOSE_SNEER_LEFT, duration, intensity, priority); break;//Nose_Wrinkler_L
-                case 56: ChangeParameter(ARKITPARAMS.NOSE_SNEER_RIGHT, duration, intensity, priority); break;//Nose_Wrinkler_R
-                case 57: ChangeParameter(ARKITPARAMS.BROW_OUTER_UP_LEFT, duration, intensity, priority); break;//Outer_Brow_Raiser_L
-                case 58: ChangeParameter(ARKITPARAMS.BROW_OUTER_UP_RIGHT, duration, intensity, priority); break;//Outer_Brow_Raiser_R
-                case 59: ChangeParameter(ARKITPARAMS.EYE_WIDE_LEFT, duration, intensity, priority); break;//Upper_Lid_Raiser_L
-                case 60: ChangeParameter(ARKITPARAMS.EYE_WIDE_RIGHT, duration, intensity, priority); break;//Upper_Lid_Raiser_R
-                case 61: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_UPPER_UP_LEFT, duration, intensity, priority); break;//Upper_Lip_Raiser_L
-                case 62: if (!currentlyInLipSync) ChangeParameter(ARKITPARAMS.MOUTH_UPPER_UP_RIGHT, duration, intensity, priority); break;//Upper_Lip_Raiser_R
-                default:
-                    break;
+                keyParamList.Add(new keyFramedPARAM(parameters[i], new List<float> { intensities[i] }));
             }
+
+            KeyFramedGesture changeParam = new KeyFramedGesture(
+                name: "change",
+                keyFrameTimes: new List<float> { duration },
+                keyFrameParams: keyParamList);
+
+            Gesture(changeParam, priority);
+        }
+
+        public void ChangeParameters(List<ARKITPARAMS> parameters, List<float> intensities, float duration, int priority = 0)
+        {
+            List<keyFramedPARAM> keyParamList = new List<keyFramedPARAM>();
+            for (int i = 0; i < parameters.Count; i++)
+            {
+                keyParamList.Add(new keyFramedPARAM(parameters[i], new List<float> { intensities[i] }));
+            }
+
+            KeyFramedGesture changeParam = new KeyFramedGesture(
+                name: "change",
+                keyFrameTimes: new List<float> { duration },
+                keyFrameParams: keyParamList);
+
+            Gesture(changeParam, priority);
         }
 
         #endregion
