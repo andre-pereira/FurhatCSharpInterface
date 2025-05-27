@@ -136,6 +136,11 @@ namespace TCPFurhatComm
         /// </summary>
         public const string Identifier = "gesture";
 
+        /// <summary>
+        /// identifier for blocking gestures.
+        /// </summary>
+        public const string BlockIdentifier = "gestureBlock";
+
         public static string SMILE_BIG = "BigSmile";
         public static string EYES_BLINK = "Blink";
         public static string BROW_FROWN = "BrowFrown";

@@ -104,6 +104,20 @@
                 public static string WORD = "furhatos.event.monitors.MonitorSpeechWord";
             }
 
+            public static class Gesture
+            {
+                /// <summary>
+                /// Monitors that a gesture has ended
+                /// </summary>
+                public static string START = "furhatos.event.monitors.MonitorGestureStart";
+
+                /// <summary>
+                /// Monitors that a gesture ended
+                /// </summary>
+                public static string END = "furhatos.event.monitors.MonitorGestureEnd";
+
+            }
+
         }
 
         public static class SENSE

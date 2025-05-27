@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -97,6 +98,13 @@ namespace TCPFurhatComm
 
         private DialogActs dialogActs;
 
+        // Variables for the logic of gestureBlock
+        private Queue<Tuple<string, string, KeyFramedGesture>> MainProcessingQueue;
+        private bool isProcessingQueue;
+        private bool waitingForSpeechEnd;
+        private bool waitingForGestureEnd;
+        private string expectedGestureName;
+
         #endregion
 
         #region Actions
@@ -151,10 +159,20 @@ namespace TCPFurhatComm
             gazeTrackingDeactivated = false;
             SubscribedEvents = new Dictionary<string, Action<string>>();
             MidTextActions = new List<Tuple<int, string, string>>();
+
+            // variable initialization for the gestureBlock logic
+            MainProcessingQueue = new Queue<Tuple<string, string, KeyFramedGesture>>();
+            isProcessingQueue = false;
+            waitingForSpeechEnd = false;
+            waitingForGestureEnd = false;
+            expectedGestureName = null;
+
+
             client = new Client(ipAddress, port);
             client.MessageReceived += new Action<string, string>(ProcessEvents);
             this.Connect("FurhatDotNet");
 
+            SubscribeToEvent(EVENTNAME.MONITOR.Gesture.END, new Action<string>(GestureEndedEvent));
             SubscribeToEvent(EVENTNAME.MONITOR.SPEECH.WORD, new Action<string>(SpeechWordEvent));
             SubscribeToEvent(EVENTNAME.MONITOR.SPEECH.END, new Action<string>(SpeechEndEvent));
             SubscribeToEvent(EVENTNAME.SENSE.SPEECH, new Action<string>(SpeechSensedEvent));
@@ -281,6 +299,25 @@ namespace TCPFurhatComm
         }
 
         /// <summary>
+        /// Triggered when there is a monitor.gesture.end event
+        /// </summary>
+        /// <param name="str"> Json string from monitor.gesture.end </param>
+        private void GestureEndedEvent(string str)
+        {
+            JObject o = JObject.Parse(str);
+            string endedGestureName = o.GetValue("name")?.ToString();
+            Console.WriteLine($"Gesture with name {endedGestureName ?? "UNKNOWN"} ended");
+
+            // If we were waiting for a gesture and its name matches (or we don't care which one)
+            if (waitingForGestureEnd && (string.IsNullOrEmpty(expectedGestureName) || endedGestureName == expectedGestureName))
+            {
+                waitingForGestureEnd = false;
+                expectedGestureName = null;
+                ProcessNext();
+            }
+        }
+
+        /// <summary>
         /// Triggered when there is a monitor.speech.rec event
         /// </summary>
         /// <param name="str"> Json string from monitor.speech.rec </param>
@@ -321,6 +358,7 @@ namespace TCPFurhatComm
         /// <param name="ev">  </param>
         private void SpeechEndEvent(string ev)
         {
+            // 1. Execute any remaining MidTextActions for the segment that just finished.
             foreach (var item in MidTextActions)
             {
                 if (item.Item2 == VOICES.Identifier)
@@ -329,18 +367,28 @@ namespace TCPFurhatComm
                     ExecuteAction(item);
             }
 
-            MonitorEvents.MonitorSpeechEnd speechWordEvent = JsonConvert.DeserializeObject<MonitorEvents.MonitorSpeechEnd>(ev);
-            SpeechEndInternal();
+            // 2. Clean up state related to the finished speech segment.
+            MidTextActions.Clear();
+            currentWord = -1;
+            inMiddleOfSpeaking = false;
+            gazeTrackingDeactivated = false;
+            // We removed the old SayQueue, so no need to check/process it.
+            // We don't call SpeechEndInternal() here anymore.
 
-            if (SayQueue.Count > 0)
+            // 3. Check if we were waiting for this event to continue the main queue.
+            //    If yes, reset the flag and call ProcessNext() to handle the
+            //    next step (which could be a gestureBlock or more text).
+            if (waitingForSpeechEnd)
             {
-                var toSayNext = SayQueue.Dequeue();
-                Say(toSayNext.Item1, toSayNext.Item2);
+                waitingForSpeechEnd = false;
+                ProcessNext();
             }
         }
 
         private void SpeechEndInternal()
         {
+            // This method now represents the *very end* of a whole Say sequence.
+            // It's called by ProcessNext() only when the MainProcessingQueue is empty.
             MidTextActions.Clear();
             inMiddleOfSpeaking = false;
             if (CurrentMood != null)
@@ -351,6 +399,7 @@ namespace TCPFurhatComm
             EndSpeechAction?.Invoke();
             gazeTrackingDeactivated = false;
             currentWord = -1;
+            isProcessingQueue = false; // *** Added: Explicitly reset the main queue processing flag.
         }
 
         /// <summary>
@@ -437,36 +486,106 @@ namespace TCPFurhatComm
         /// </summary>
         public void Say(string text, KeyFramedGesture mood = null, Dictionary<string, string> keyValuePairs = null, bool abort = false)
         {
-            if (inMiddleOfSpeaking && !abort)
-            {
-                SayQueue.Enqueue(new Tuple<string, KeyFramedGesture, Dictionary<string, string>, bool>(text, mood, keyValuePairs,abort));
-            }
-            else
-            {
-                if (mood != null)
-                {
-                    Gesture(mood);
-                    CurrentMood = mood.name;
-                }
-                else CurrentMood = null;
+            if (abort) { MainProcessingQueue.Clear(); SayStop(); isProcessingQueue = false; waitingForSpeechEnd = false; waitingForGestureEnd = false; return; }
 
-                //midtextaction are divided by | if there is such separator we should process them
-                var midTextActions = text.Split('|');
+            if (keyValuePairs != null) text = replaceVariables(text, keyValuePairs);
 
-                if (midTextActions.Count() > 1)
+            string pattern = @"(\|gestureBlock\(.*?\)\|)";
+            string[] parts = Regex.Split(text, pattern, RegexOptions.None);
+            bool moodApplied = false;
+
+            foreach (string part in parts)
+            {
+                if (string.IsNullOrEmpty(part)) continue;
+
+                if (part.StartsWith("|" + GESTURES.BlockIdentifier + "("))
                 {
-                    if (keyValuePairs != null)
-                        text = replaceVariables(text, keyValuePairs);
-                    FillMidTextActions(text);
-                    text = Regex.Replace(text, @"\|.*?\|", String.Empty);
-                    Say(text, abort);
-                    SentSayEvent?.Invoke(text);
+                    string gestureName = part.Substring(("|" + GESTURES.BlockIdentifier + "(").Length);
+                    gestureName = gestureName.Substring(0, gestureName.Length - ")|".Length);
+                    MainProcessingQueue.Enqueue(Tuple.Create("gestureBlock", gestureName, (KeyFramedGesture)null));
                 }
                 else
                 {
-                    Say(text, abort);
-                    SentSayEvent?.Invoke(text);
+                    MainProcessingQueue.Enqueue(Tuple.Create("text", part, moodApplied ? null : mood));
+                    moodApplied = true;
                 }
+            }
+            TryProcessNext();
+        }
+
+        private void TryProcessNext()
+        {
+            if (!isProcessingQueue && MainProcessingQueue.Count > 0)
+            {
+                isProcessingQueue = true;
+                ProcessNext();
+            }
+        }
+
+        private void ProcessNext()
+        {
+            // If we are currently waiting for an event, stop here.
+            // The event handler will call ProcessNext() again when ready.
+            if (waitingForSpeechEnd || waitingForGestureEnd)
+            {
+                return;
+            }
+
+            // If queue is empty, we are done. Call final cleanup.
+            if (MainProcessingQueue.Count == 0)
+            {
+                isProcessingQueue = false;
+                SpeechEndInternal();
+                return;
+            }
+
+            var (type, value, mood) = MainProcessingQueue.Dequeue();
+
+            if (type == "text")
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    ProcessNext(); // Skip empty text
+                }
+                else
+                {
+                    waitingForSpeechEnd = true; // Set flag
+                    SayInternal(value, mood);
+                }
+            }
+            else if (type == "gestureBlock")
+            {
+                waitingForGestureEnd = true; // Set flag
+                expectedGestureName = value; // Store expected name
+                Gesture(value); // Send gesture command
+                // *** DO NOT SLEEP - We now wait for the event ***
+            }
+        }
+
+        private void SayInternal(string text, KeyFramedGesture mood)
+        {
+            MidTextActions.Clear();
+            inMiddleOfSpeaking = true;
+
+            if (mood != null) { Gesture(mood); CurrentMood = mood.name; }
+
+            string originalText = text;
+            FillMidTextActions(originalText);
+            text = Regex.Replace(originalText, @"\|(?!gestureBlock)(.*?)\|", String.Empty);
+            text = Regex.Replace(text, @"\|gestureBlock\(.*?\)\|", String.Empty);
+
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                inMiddleOfSpeaking = false;
+                // Since we didn't speak, we aren't waiting for speech end.
+                // We MUST reset the flag before calling ProcessNext.
+                waitingForSpeechEnd = false;
+                ProcessNext();
+            }
+            else
+            {
+                SendEvent(new ActionEvents.Speak(text, true, false));
+                SentSayEvent?.Invoke(text);
             }
         }
 
@@ -526,8 +645,8 @@ namespace TCPFurhatComm
         public void SayBlock(string toSay, KeyFramedGesture mood = null, Dictionary<string, string> keyValuePairs = null)
         {
             Say(toSay, mood, keyValuePairs);
-
-            while (inMiddleOfSpeaking)
+            // Wait until processing is finished.
+            while (isProcessingQueue || waitingForSpeechEnd || waitingForGestureEnd || MainProcessingQueue.Count > 0)
             {
                 Thread.Sleep(50);
             }
@@ -538,9 +657,12 @@ namespace TCPFurhatComm
         /// </summary>
         public void SayStop()
         {
-            SayQueue.Clear();
-            SpeechEndInternal();
+            MainProcessingQueue.Clear();
             SendEvent(new ActionEvents.StopSpeech());
+            isProcessingQueue = false;
+            waitingForSpeechEnd = false;
+            waitingForGestureEnd = false; // Reset gesture flag too
+            SpeechEndInternal();
         }
 
         /// <summary>
@@ -549,6 +671,7 @@ namespace TCPFurhatComm
         /// <param name="text"> text to be parsed </param>
         private void FillMidTextActions(string text)
         {
+            // This method remains the same - ensure it ignores gestureBlock.
             string textWithNoSSML = Regex.Replace(text, "<.*?>", String.Empty);
             int wordNumber = -1;
             char previousCharacter = ' ';
@@ -562,7 +685,10 @@ namespace TCPFurhatComm
                 {
                     if (insideAction)
                     {
-                        MidTextActions.Add(new Tuple<int, string, string>(wordNumber + 1, action.ToString(), argument.ToString()));
+                        if (action.ToString() != GESTURES.BlockIdentifier)
+                        {
+                            MidTextActions.Add(new Tuple<int, string, string>(wordNumber + 1, action.ToString(), argument.ToString()));
+                        }
                         action.Clear();
                         argument.Clear();
                     }
@@ -572,20 +698,14 @@ namespace TCPFurhatComm
                 {
                     if (insideAction)
                     {
-                        if (textWithNoSSML[i] == '(')
-                            insideArgument = true;
-                        else if (textWithNoSSML[i] == ')')
-                            insideArgument = false;
-                        else if (insideArgument)
-                            argument.Append(textWithNoSSML[i]);
+                        if (textWithNoSSML[i] == '(') insideArgument = true;
+                        else if (textWithNoSSML[i] == ')') insideArgument = false;
+                        else if (insideArgument) argument.Append(textWithNoSSML[i]);
                         else action.Append(textWithNoSSML[i]);
                     }
                     else
                     {
-                        if (Char.IsLetter(textWithNoSSML[i]) && previousCharacter == ' ')
-                        {
-                            wordNumber++;
-                        }
+                        if (Char.IsLetter(textWithNoSSML[i]) && previousCharacter == ' ') { wordNumber++; }
                         previousCharacter = textWithNoSSML[i];
                     }
                 }
@@ -877,6 +997,17 @@ namespace TCPFurhatComm
         public static string Gesture(string name)
         {
             return "|" + GESTURES.Identifier + "(" + name + ")|";
+        }
+
+        /// <summary>
+        /// Generates a blocking gesture tag to be inserted inside a say string.
+        /// This will pause speech, execute the gesture, wait for it, and then resume.
+        /// </summary>
+        /// <param name="name"> Gesture to be "played".</param>
+        /// <returns></returns>
+        public static string GestureBlock(string name) // New
+        {
+            return "|" + GESTURES.BlockIdentifier + "(" + name + ")|";
         }
 
         /// <summary>
