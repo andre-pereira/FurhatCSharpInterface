@@ -359,17 +359,9 @@ namespace TCPFurhatComm
         private void SpeechEndEvent(string ev)
         {
             // 1. Execute any remaining MidTextActions for the segment that just finished.
-            foreach (var item in MidTextActions)
-            {
-                if (item.Item2 == VOICES.Identifier)
-                    ChangeVoice(item.Item3);
-                if (item.Item1 > currentWord)
-                    ExecuteAction(item);
-            }
+            ExecuteRemainingMidTextActions();
 
             // 2. Clean up state related to the finished speech segment.
-            MidTextActions.Clear();
-            currentWord = -1;
             inMiddleOfSpeaking = false;
             gazeTrackingDeactivated = false;
             // We removed the old SayQueue, so no need to check/process it.
@@ -383,6 +375,20 @@ namespace TCPFurhatComm
                 waitingForSpeechEnd = false;
                 ProcessNext();
             }
+        }
+
+        private void ExecuteRemainingMidTextActions()
+        {
+            foreach (var item in MidTextActions)
+            {
+                if (item.Item2 == VOICES.Identifier)
+                    ChangeVoice(item.Item3);
+                if (item.Item1 > currentWord)
+                    ExecuteAction(item);
+            }
+
+            MidTextActions.Clear();
+            currentWord = -1;
         }
 
         private void SpeechEndInternal()
@@ -576,10 +582,11 @@ namespace TCPFurhatComm
 
             if (string.IsNullOrWhiteSpace(text))
             {
+                // No actual speech content - execute any actions immediately.
+                ExecuteRemainingMidTextActions();
                 inMiddleOfSpeaking = false;
-                // Since we didn't speak, we aren't waiting for speech end.
-                // We MUST reset the flag before calling ProcessNext.
                 waitingForSpeechEnd = false;
+                gazeTrackingDeactivated = false;
                 ProcessNext();
             }
             else
